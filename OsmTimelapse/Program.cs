@@ -1,8 +1,4 @@
 ﻿using System;
-using System.IO;
-using System.Net.Http;
-using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,98 +7,104 @@ using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
-namespace OsmTimelapse
+namespace OsmTimelapse;
+
+public static class Program
 {
-    internal static class Program
+    public static ServiceProvider serviceProvider;
+    
+    public static async Task<int> Main(string[] args)
     {
-        public static async Task<int> Main(string[] args)
-        {
-            var cornerA = new Coordinates("51.9761;4.1288");
-            var cornerB = new Coordinates("52.0533;4.4113");
-            var zoom = 17;
+        var services = new ServiceCollection().AddHttpClient();
+        services.AddHttpClient<ITileDownloaderHttpClient, TileDownloaderHttpClient>();
+        serviceProvider = services.BuildServiceProvider();
+        
+        var cornerA = new Coordinates("51.9761;4.1288");
+        var cornerB = new Coordinates("52.0533;4.4113");
+        var zoom = 17;
 
-            (uint x, uint y) a = (Tiles.LongToTileX(cornerA.longitude, zoom), Tiles.LatToTileY(cornerA.latitude, zoom));
-            (uint x, uint y) b = (Tiles.LongToTileX(cornerB.longitude, zoom), Tiles.LatToTileY(cornerB.latitude, zoom));
+        (uint x, uint y) a = (Tiles.LongToTileX(cornerA.longitude, zoom), Tiles.LatToTileY(cornerA.latitude, zoom));
+        (uint x, uint y) b = (Tiles.LongToTileX(cornerB.longitude, zoom), Tiles.LatToTileY(cornerB.latitude, zoom));
 
-            // (uint x, uint y) a = (0, 0);
-            // (uint x, uint y) b = ((uint) Math.Pow(2, zoom) - 1, (uint) Math.Pow(2, zoom) -1);
+        // (uint x, uint y) a = (0, 0);
+        // (uint x, uint y) b = ((uint) Math.Pow(2, zoom) - 1, (uint) Math.Pow(2, zoom) -1);
 
-            var box = new BoundingBox(a, b);
+        var box = new BoundingBox(a, b);
 
-            // Console.WriteLine($"Corner A: ({cornerA}) -> ({a.x},{a.y})");
-            // Console.WriteLine($"Corner B: ({cornerB}) -> ({b.x},{b.y})");
+        // Console.WriteLine($"Corner A: ({cornerA}) -> ({a.x},{a.y})");
+        // Console.WriteLine($"Corner B: ({cornerB}) -> ({b.x},{b.y})");
 
-            Console.WriteLine($"Corner A URL: {Tiles.GetTileUrl(a, zoom)}");
-            Console.WriteLine($"Corner B URL: {Tiles.GetTileUrl(b, zoom)}");
+        Console.WriteLine($"Corner A URL: {Tiles.GetTileUrl(a, zoom)}");
+        Console.WriteLine($"Corner B URL: {Tiles.GetTileUrl(b, zoom)}");
             
-            Console.WriteLine(box.ToString());
-            Console.WriteLine($"Final image size: {box.Width * 256}x{box.Height * 256}px ({box.Area * 256L * 256L / 1_000_000.0:#,0.0}MP)");
+        Console.WriteLine(box.ToString());
+        Console.WriteLine($"Final image size: {box.Width * 256}x{box.Height * 256}px ({box.Area * 256L * 256L / 1_000_000.0:#,0.0}MP)");
 
-            if (box.Area * 256L * 256L > 100_000_000L)
+        if (box.Area * 256L * 256L > 100_000_000L)
+        {
+            var result =
+                ConsoleConfirm(
+                    "The requested image will be over 100MP, likely resulting in very large files. Are you sure you want to continue?",
+                    false);
+
+            if (!result)
             {
-                var result =
-                    ConsoleConfirm(
-                        "The requested image will be over 100MP, likely resulting in very large files. Are you sure you want to continue?",
-                        false);
-
-                if (!result)
-                {
-                    Console.WriteLine("Try lowering the zoom value to get a smaller image, or choose a smaller region.");
-                    return 0;
-                }
+                Console.WriteLine("Try lowering the zoom value to get a smaller image, or choose a smaller region.");
+                return 0;
             }
-
-            // _ = await TileDownloader.DownloadTiles(box, zoom);
-            // Thread.Sleep(1000);
-            var tiles = await TileDownloaderBetter.DownloadTiles(box, zoom);
-            // if (tiles == null) return;
-            // MakeImage((int) box.Width, (int) box.Height, tiles);
-
-            return 0;
         }
 
-        public static void MakeImage(int tileCountX, int tileCountY, Image<Rgba32>[] tiles)
-        {
-            using var newImage = new Image<Rgba32>(tileCountX * 256, tileCountY * 256);
-            for (var j = 0; j < tiles.Length; j++)
-            {
-                newImage.Mutate(o => o.DrawImage(tiles[j], new Point(j % tileCountX * 256, j / tileCountX * 256), 1f));
-            }
+        // _ = await TileDownloader.DownloadTiles(box, zoom);
+        // Thread.Sleep(1000);
+        var tiles = await TileDownloaderHttpClient.DownloadTiles(box, zoom);
+        // if (tiles == null) return;
+        MakeImage((int) box.Width, (int) box.Height, tiles);
 
-            var encoder = new PngEncoder {
-                CompressionLevel = PngCompressionLevel.BestCompression,
-                BitDepth = PngBitDepth.Bit8
-            };
-            newImage.Save("output.png", encoder);
+        return 0;
+    }
+
+    public static void MakeImage(int tileCountX, int tileCountY, Image<Rgba32>[] tiles)
+    {
+        using var newImage = new Image<Rgba32>(tileCountX * 256, tileCountY * 256);
+        for (var j = 0; j < tiles.Length; j++)
+        {
+            newImage.Mutate(o => o.DrawImage(tiles[j], new Point(j % tileCountX * 256, j / tileCountX * 256), 1f));
+            Console.WriteLine($"Processed {j + 1}/{tiles.Length}");
         }
 
-        private static bool ConsoleConfirm(string prompt, bool defaultValue)
+        var encoder = new PngEncoder {
+            CompressionLevel = PngCompressionLevel.BestCompression,
+            BitDepth = PngBitDepth.Bit8
+        };
+        newImage.Save("output.png", encoder);
+    }
+
+    private static bool ConsoleConfirm(string prompt, bool defaultValue)
+    {
+        var yesNo = $"[{(defaultValue ? "Y" : "y")}/{(!defaultValue ? "N" : "n")}]";
+
+        ConsoleKey response;
+        do
         {
-            var yesNo = $"[{(defaultValue ? "Y" : "y")}/{(!defaultValue ? "N" : "n")}]";
-
-            ConsoleKey response;
-            do
+            Console.Write($"{prompt} {yesNo} ");
+            response = Console.ReadKey(false).Key;
+            if (response != ConsoleKey.Enter)
             {
-                Console.Write($"{prompt} {yesNo} ");
-                response = Console.ReadKey(false).Key;
-                if (response != ConsoleKey.Enter)
-                {
-                    Console.WriteLine();
-                }
-            } while (response != ConsoleKey.Y && response != ConsoleKey.N && response != ConsoleKey.Enter);
-
-            bool confirmed;
-            if (response == ConsoleKey.Enter)
-            {
-                confirmed = defaultValue;
                 Console.WriteLine();
             }
-            else
-            {
-                confirmed = response == ConsoleKey.Y;
-            }
+        } while (response != ConsoleKey.Y && response != ConsoleKey.N && response != ConsoleKey.Enter);
 
-            return confirmed;
+        bool confirmed;
+        if (response == ConsoleKey.Enter)
+        {
+            confirmed = defaultValue;
+            Console.WriteLine();
         }
+        else
+        {
+            confirmed = response == ConsoleKey.Y;
+        }
+
+        return confirmed;
     }
 }
