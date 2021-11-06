@@ -29,7 +29,7 @@ namespace ConsoleTools;
 /// </summary>
 public class ProgressBar : IDisposable, IProgress<int>
 {
-    private const int blockCount = 20;
+    private readonly int blockCount;
     private readonly TimeSpan animationInterval = TimeSpan.FromSeconds(1.0 / 16);
 
     private readonly Timer timer;
@@ -39,11 +39,11 @@ public class ProgressBar : IDisposable, IProgress<int>
     private int currentValue = 0;
     private string currentText = string.Empty;
     private bool disposed = false;
-    private int animationIndex = 0;
 
-    public ProgressBar(int maxValue)
+    public ProgressBar(int maxValue, int length = 25)
     {
         this.maxValue = maxValue;
+        blockCount = length;
         
         timer = new Timer(TimerHandler);
 

@@ -17,6 +17,7 @@ namespace OsmTimelapse;
 public interface ITileDownloaderHttpClient
 {
     long BytesDownloaded { get; }
+    long DownloadTime { get; }
     Task<Image<Rgba32>[]> DownloadTiles(BoundingBox box, int zoom, int requestLimit = 100, int limitingPeriod = 0);
 }
 
@@ -24,6 +25,7 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
 {
     private readonly HttpClient httpClient;
     public long BytesDownloaded { get; private set; }
+    public long DownloadTime { get; private set; }
 
     private int done;
 
@@ -55,7 +57,7 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
             var task = httpClient.GetAsync(new Uri(tileUrl));
             _ = task.ContinueWith(async _ =>
             {
-                await Task.Delay(limitingPeriod);
+                if (limitingPeriod > 0) await Task.Delay(limitingPeriod);
                 semaphore.Release();
             });
 
@@ -75,12 +77,12 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
                 var bytes = await response.Content.ReadAsByteArrayAsync();
 
                 stopwatch.Stop();
-                var downloadTime = stopwatch.ElapsedMilliseconds;
+                DownloadTime += stopwatch.ElapsedMilliseconds;
 
                 BytesDownloaded += bytes.Length;
 
                 // Console.WriteLine(
-                //     $"Tile ({x},{y}) {i + 1}/{box.Area} {FormatKB(bytes.Length)} (download {downloadTime:#,0}ms{(downloadTime > 5000 ? " !!!" : "")})");
+                // $"Tile ({x},{y}) {i + 1}/{box.Area} {FormatKB(bytes.Length),6} (took {downloadTime:#,0}ms{(downloadTime > 5000 ? " !!!" : "")})");
                 done++;
                 progressBar.Report(done);
 
@@ -104,11 +106,6 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
         return result;
     }
 
-    // private async Task<Image<Rgba32>> DownloadTile(((uint x, uint y), int i) data)
-    // {
-    //     
-    // }
-
     public static async Task<Image<Rgba32>[]> DownloadTiles(BoundingBox box, int zoom)
     {
         var client = Program.serviceProvider.GetService<ITileDownloaderHttpClient>();
@@ -118,11 +115,11 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
         var stopwatch = new Stopwatch();
 
         stopwatch.Start();
-        var tiles = await client.DownloadTiles(box, zoom, 400, 1000);
+        var tiles = await client.DownloadTiles(box, zoom, 3);
         stopwatch.Stop();
 
         Console.WriteLine(
-            $"Downloaded {box.Area} tiles ({FormatKB(client.BytesDownloaded)}) in {stopwatch.ElapsedMilliseconds:#,0}ms (average size {FormatKB(client.BytesDownloaded / box.Area)})");
+            $"Downloaded {box.Area} tiles ({FormatKB(client.BytesDownloaded)}) in {stopwatch.ElapsedMilliseconds:#,0}ms (average size {FormatKB(client.BytesDownloaded / box.Area)}, average time {client.DownloadTime / (double) box.Area:#,0}ms)");
         return tiles;
     }
 
