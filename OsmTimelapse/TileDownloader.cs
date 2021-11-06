@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,14 +32,16 @@ namespace OsmTimelapse
 
         private async ValueTask DownloadTile(((uint x, uint y) t, int i) data, CancellationToken token)
         {
-            var (t, i) = data;
+            var ((x, y), i) = data;
+            var tileUrl = Tiles.GetMirrorTileUrl(x, y, zoom);
             try
             {
                 var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate");
-                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent",
-                    $"Mapsnap v{Assembly.GetExecutingAssembly().GetName().Version}");
-                using var response = await httpClient.GetAsync(new Uri(Tiles.GetMirrorTileUrl(t, zoom)));
+                httpClient.DefaultRequestHeaders.UserAgent.Add(
+                    new ProductInfoHeaderValue("Mapsnap", $"v{Assembly.GetExecutingAssembly().GetName().Version}"));
+                ServicePointManager.DefaultConnectionLimit = 1000;
+                
+                using var response = await httpClient.GetAsync(new Uri(tileUrl), token);
                 if (!response.IsSuccessStatusCode)
                 {
                     await Console.Error.WriteLineAsync(
@@ -45,15 +49,16 @@ namespace OsmTimelapse
                     return;
                 }
 
-                var bytes = await response.Content.ReadAsByteArrayAsync();
+                var bytes = await response.Content.ReadAsByteArrayAsync(token);
                 bytesDownloaded += bytes.Length;
-                Console.WriteLine($"Tile ({t.x},{t.y}) {i + 1}/{box.Area} {FormatKB(bytes.Length)}");
+                Console.WriteLine($"Tile ({x},{y}) {i + 1}/{box.Area} {FormatKB(bytes.Length)}");
                 downloadedTiles[i] = Image.Load<Rgba32>(bytes);
             }
             catch (HttpRequestException e)
             {
-                Console.WriteLine("Could not reach the OSM tile server! Are you connected to the internet?");
-                Console.WriteLine(e.StackTrace);
+                Console.WriteLine($"Could not reach the OSM tile server ({e.StatusCode})! Are you connected to the internet?");
+                Console.WriteLine($"\tAt tile {tileUrl}");
+                Console.WriteLine(e);
             }
         }
 
@@ -83,40 +88,8 @@ namespace OsmTimelapse
             var tiles = await downloader.DownloadTiles();
             stopwatch.Stop();
             
-            Console.WriteLine($"Downloaded {box.Area}tiles ({FormatKB(downloader.bytesDownloaded)}) in {stopwatch.ElapsedMilliseconds:#,0}ms (average size {FormatKB(downloader.bytesDownloaded / box.Area)})");
+            Console.WriteLine($"Downloaded {box.Area} tiles ({FormatKB(downloader.bytesDownloaded)}) in {stopwatch.ElapsedMilliseconds:#,0}ms (average size {FormatKB(downloader.bytesDownloaded / box.Area)})");
             return tiles;
-            // for (var y = box.Origin.y; y < box.Origin.y + box.Height; y++)
-            // {
-            //     for (var x = box.Origin.x; x < box.Origin.x + box.Width; x++)
-            //     {
-            //         try
-            //         {
-            //             using var response = await httpClient.GetAsync(new Uri(Tiles.GetTileUrl(x, y, zoom)));
-            //             if (!response.IsSuccessStatusCode)
-            //             {
-            //                 Console.Error.WriteLine(
-            //                     $"Unexpected response from OSM tile server: {(int) response.StatusCode} {response.StatusCode}. Please report to the developers.");
-            //                 return null;
-            //             }
-            //
-            //             var bytes = await response.Content.ReadAsByteArrayAsync();
-            //             bytesDownloaded += bytes.Length;
-            //             Console.WriteLine($"Tile ({x},{y}) {i + 1}/{box.Area} {FormatKB(bytes.Length)}");
-            //             tiles[i++] = Image.Load<Rgba32>(bytes);
-            //         }
-            //         catch (HttpRequestException e)
-            //         {
-            //             Console.WriteLine("Could not reach the OSM tile server! Are you connected to the internet?");
-            //             Console.WriteLine(e.StackTrace);
-            //             return null;
-            //         }
-            //     }
-            // }
-            //
-            // Console.WriteLine($"Downloaded {FormatKB(bytesDownloaded)} (average size {FormatKB(bytesDownloaded / box.Area)})");
-
-            // return tiles;
-            // return null;
         }
 
         private static string FormatKB(long bytes)

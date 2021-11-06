@@ -2,8 +2,10 @@
 using System.IO;
 using System.Net.Http;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using CommandLine;
+using Microsoft.Extensions.DependencyInjection;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
@@ -17,7 +19,7 @@ namespace OsmTimelapse
         {
             var cornerA = new Coordinates("51.9761;4.1288");
             var cornerB = new Coordinates("52.0533;4.4113");
-            var zoom = 16;
+            var zoom = 17;
 
             (uint x, uint y) a = (Tiles.LongToTileX(cornerA.longitude, zoom), Tiles.LatToTileY(cornerA.latitude, zoom));
             (uint x, uint y) b = (Tiles.LongToTileX(cornerB.longitude, zoom), Tiles.LatToTileY(cornerB.latitude, zoom));
@@ -50,9 +52,11 @@ namespace OsmTimelapse
                 }
             }
 
-            var tiles = await TileDownloader.DownloadTiles(box, zoom);
+            // _ = await TileDownloader.DownloadTiles(box, zoom);
+            // Thread.Sleep(1000);
+            var tiles = await TileDownloaderBetter.DownloadTiles(box, zoom);
             // if (tiles == null) return;
-            MakeImage((int) box.Width, (int) box.Height, tiles);
+            // MakeImage((int) box.Width, (int) box.Height, tiles);
 
             return 0;
         }
