@@ -21,18 +21,12 @@ public static class Program
         
         var cornerA = new Coordinates("51.9761;4.1288");
         var cornerB = new Coordinates("52.0533;4.4113");
-        var zoom = 14;
+        var zoom = 16;
 
         (uint x, uint y) a = (Tiles.LongToTileX(cornerA.longitude, zoom), Tiles.LatToTileY(cornerA.latitude, zoom));
         (uint x, uint y) b = (Tiles.LongToTileX(cornerB.longitude, zoom), Tiles.LatToTileY(cornerB.latitude, zoom));
 
-        // (uint x, uint y) a = (0, 0);
-        // (uint x, uint y) b = ((uint) Math.Pow(2, zoom) - 1, (uint) Math.Pow(2, zoom) -1);
-
         var box = new BoundingBox(a, b);
-
-        // Console.WriteLine($"Corner A: ({cornerA}) -> ({a.x},{a.y})");
-        // Console.WriteLine($"Corner B: ({cornerB}) -> ({b.x},{b.y})");
 
         Console.WriteLine($"Corner A URL: {Tiles.GetTileUrl(a, zoom)}");
         Console.WriteLine($"Corner B URL: {Tiles.GetTileUrl(b, zoom)}");
@@ -54,11 +48,9 @@ public static class Program
             }
         }
 
-        // _ = await TileDownloader.DownloadTiles(box, zoom);
-        // Thread.Sleep(1000);
         var tiles = await TileDownloaderHttpClient.DownloadTiles(box, zoom);
         // if (tiles == null) return;
-        // MakeImage((int) box.Width, (int) box.Height, tiles);
+        MakeImage((int) box.Width, (int) box.Height, tiles);
 
         return 0;
     }
