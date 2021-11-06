@@ -4,6 +4,8 @@ namespace OsmTimelapse
 {
     public static class Tiles
     {
+        private static long urlIndex;
+
         public static uint LongToTileX(double lon, int z)
         {
             return (uint) Math.Floor((lon + 180.0) / 360.0 * (1 << z));
@@ -27,11 +29,18 @@ namespace OsmTimelapse
 
         public static string GetTileUrl(uint x, uint y, int zoom)
         {
-            return $"https://a.tile.openstreetmap.org/{zoom}/{x}/{y}.png";
+            return $"https://tile.openstreetmap.org/{zoom}/{x}/{y}.png";
         }
 
-        public static string GetTileUrl((uint x, uint y) tile, int zoom) => GetTileUrl(tile.x, tile.y, zoom);
+        public static string GetMirrorTileUrl(uint x, uint y, int zoom)
+        {
+            return $"https://{(char) ('a' + urlIndex++ % 3)}.tile.openstreetmap.org/{zoom}/{x}/{y}.png";
+        }
         
+        public static string GetMirrorTileUrl((uint x, uint y) tile, int zoom) => GetMirrorTileUrl(tile.x, tile.y, zoom);
+
+        public static string GetTileUrl((uint x, uint y) tile, int zoom) => GetTileUrl(tile.x, tile.y, zoom);
+
         public static string GetTileUrl(Coordinates coords, int zoom)
         {
             var x = LongToTileX(coords.longitude, zoom);

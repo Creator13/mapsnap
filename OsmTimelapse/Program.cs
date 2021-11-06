@@ -1,6 +1,7 @@
 ﻿using System;
-using System.Net;
+using System.IO;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading.Tasks;
 using CommandLine;
 using SixLabors.ImageSharp;
@@ -10,71 +11,94 @@ using SixLabors.ImageSharp.Processing;
 
 namespace OsmTimelapse
 {
-    class Program
+    internal static class Program
     {
-        public static async Task Main(string[] args)
+        public static async Task<int> Main(string[] args)
         {
             var cornerA = new Coordinates("51.9761;4.1288");
             var cornerB = new Coordinates("52.0533;4.4113");
-            var zoom = 15;
+            var zoom = 16;
 
             (uint x, uint y) a = (Tiles.LongToTileX(cornerA.longitude, zoom), Tiles.LatToTileY(cornerA.latitude, zoom));
             (uint x, uint y) b = (Tiles.LongToTileX(cornerB.longitude, zoom), Tiles.LatToTileY(cornerB.latitude, zoom));
 
-            // (uint x, uint y) a = (16755, 10827);
-            // (uint x, uint y) b = (16759, 10833);
+            // (uint x, uint y) a = (0, 0);
+            // (uint x, uint y) b = ((uint) Math.Pow(2, zoom) - 1, (uint) Math.Pow(2, zoom) -1);
 
-            Console.WriteLine($"Corner A: ({a}) -> ({a.x},{a.y})");
-            Console.WriteLine($"Corner B: ({b}) -> ({b.x},{b.y})");
+            var box = new BoundingBox(a, b);
+
+            // Console.WriteLine($"Corner A: ({cornerA}) -> ({a.x},{a.y})");
+            // Console.WriteLine($"Corner B: ({cornerB}) -> ({b.x},{b.y})");
 
             Console.WriteLine($"Corner A URL: {Tiles.GetTileUrl(a, zoom)}");
             Console.WriteLine($"Corner B URL: {Tiles.GetTileUrl(b, zoom)}");
-
-            var box = new BoundingBox(a, b);
+            
             Console.WriteLine(box.ToString());
-            Console.WriteLine($"Final image size: {box.Width * 256}x{box.Height * 256}px ({box.Area * 256 * 256/1_000_000.0:F1}MP)");
+            Console.WriteLine($"Final image size: {box.Width * 256}x{box.Height * 256}px ({box.Area * 256L * 256L / 1_000_000.0:#,0.0}MP)");
 
-            await DownloadTiles(box, zoom);
-        }
-
-        public static async Task DownloadTiles(BoundingBox box, int zoom)
-        {
-            var tiles = new Image<Rgba32>[box.Area];
-
-            var httpClient = new HttpClient();
-            // httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml");
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate");
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0");
-            // httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Charset", "ISO-8859-1");
-            var i = 0;
-
-            long downloaded = 0;
-            for (var y = box.Origin.y; y < box.Origin.y + box.Height; y++)
+            if (box.Area * 256L * 256L > 100_000_000L)
             {
-                for (var x = box.Origin.x; x < box.Origin.x + box.Width; x++)
+                var result =
+                    ConsoleConfirm(
+                        "The requested image will be over 100MP, likely resulting in very large files. Are you sure you want to continue?",
+                        false);
+
+                if (!result)
                 {
-                    using var response = await httpClient.GetAsync(new Uri(Tiles.GetTileUrl(x, y, zoom)));
-                    var bytes = await response.Content.ReadAsByteArrayAsync();
-                    downloaded += bytes.Length;
-                    Console.WriteLine($"Tile {i+1}/{box.Area} {bytes.Length/1024f:#,##0.0}kB");
-                    tiles[i++] = Image.Load<Rgba32>(bytes);
+                    Console.WriteLine("Try lowering the zoom value to get a smaller image, or choose a smaller region.");
+                    return 0;
                 }
             }
-            Console.WriteLine($"Downloaded {downloaded/1024f:#,##0.0}kB");
 
-            using var newImage = new Image<Rgba32>((int) box.Width * 256, (int) box.Height * 256);
+            var tiles = await TileDownloader.DownloadTiles(box, zoom);
+            // if (tiles == null) return;
+            MakeImage((int) box.Width, (int) box.Height, tiles);
+
+            return 0;
+        }
+
+        public static void MakeImage(int tileCountX, int tileCountY, Image<Rgba32>[] tiles)
+        {
+            using var newImage = new Image<Rgba32>(tileCountX * 256, tileCountY * 256);
             for (var j = 0; j < tiles.Length; j++)
             {
-                newImage.Mutate(o =>
-                {
-                    o.DrawImage(tiles[j], new Point((j % (int) box.Width) * 256, (j / (int) box.Width) * 256), 1f);
-                });
+                newImage.Mutate(o => o.DrawImage(tiles[j], new Point(j % tileCountX * 256, j / tileCountX * 256), 1f));
             }
 
-            var encoder = new PngEncoder();
-            encoder.CompressionLevel = PngCompressionLevel.BestCompression;
-            encoder.BitDepth = PngBitDepth.Bit8;
+            var encoder = new PngEncoder {
+                CompressionLevel = PngCompressionLevel.BestCompression,
+                BitDepth = PngBitDepth.Bit8
+            };
             newImage.Save("output.png", encoder);
+        }
+
+        private static bool ConsoleConfirm(string prompt, bool defaultValue)
+        {
+            var yesNo = $"[{(defaultValue ? "Y" : "y")}/{(!defaultValue ? "N" : "n")}]";
+
+            ConsoleKey response;
+            do
+            {
+                Console.Write($"{prompt} {yesNo} ");
+                response = Console.ReadKey(false).Key;
+                if (response != ConsoleKey.Enter)
+                {
+                    Console.WriteLine();
+                }
+            } while (response != ConsoleKey.Y && response != ConsoleKey.N && response != ConsoleKey.Enter);
+
+            bool confirmed;
+            if (response == ConsoleKey.Enter)
+            {
+                confirmed = defaultValue;
+                Console.WriteLine();
+            }
+            else
+            {
+                confirmed = response == ConsoleKey.Y;
+            }
+
+            return confirmed;
         }
     }
 }

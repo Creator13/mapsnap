@@ -14,7 +14,7 @@ namespace OsmTimelapse
         public (uint x, uint y) BottomLeft => (Origin.x, Origin.y + Height);
         public (uint x, uint y) BottomRight => (Origin.x + Width, Origin.y + Height);
 
-        public uint Area => Height * Width;
+        public int Area => (int) Height * (int) Width;
 
         public BoundingBox((uint x, uint y) a, (uint x, uint y) b)
         {
@@ -24,8 +24,10 @@ namespace OsmTimelapse
             var maxY = Math.Max(a.y, b.y);
 
             Origin = (minX, minY);
-            Width = maxX - minX;
-            Height = maxY - minY;
+            // Adding 1 to the dimensions ensures the right and bottom edge tiles are also included.
+            // The max x/y values are inclusive because the bottom-right coordinate falls in that tile.
+            Width = maxX - minX + 1;
+            Height = maxY - minY + 1;
         }
 
         public override bool Equals(object obj)
@@ -84,7 +86,7 @@ namespace OsmTimelapse
 
             boxString.Append("- ").Append(bottom[1]);
 
-            return $"Bounding box (size: {Width}x{Height}, area: {Area}):\n{boxString}";
+            return $"Bounding box (size: {Width}x{Height}, area: {Area:#,#}):\n{boxString}";
         }
 
         public static bool operator ==(BoundingBox left, BoundingBox right)
