@@ -7,6 +7,7 @@ using System.Net.Http.Headers;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using ConsoleTools;
 using Microsoft.Extensions.DependencyInjection;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -24,21 +25,26 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
     private readonly HttpClient httpClient;
     public long BytesDownloaded { get; private set; }
 
+    private int done;
+
     public TileDownloaderHttpClient(HttpClient client)
     {
         httpClient = client;
         httpClient.DefaultRequestHeaders.UserAgent.Add(
             new ProductInfoHeaderValue("Mapsnap", $"v{Assembly.GetExecutingAssembly().GetName().Version}"));
     }
-    
+
     public async Task<Image<Rgba32>[]> DownloadTiles(BoundingBox box, int zoom, int requestLimit = 100, int limitingPeriod = 0)
     {
         BytesDownloaded = 0;
+        done = 0;
 
         var tileData = CreateTileData(box);
 
         var semaphore = new SemaphoreSlim(requestLimit);
-        
+
+        Console.Write($"Downloading {box.Area} tiles: ");
+        var progressBar = new ProgressBar(box.Area);
         var tasks = tileData.Select(async data =>
         {
             await semaphore.WaitAsync();
@@ -53,7 +59,7 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
                 semaphore.Release();
             });
 
-            try 
+            try
             {
                 var stopwatch = new Stopwatch();
                 stopwatch.Start();
@@ -73,8 +79,11 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
 
                 BytesDownloaded += bytes.Length;
 
-                Console.WriteLine(
-                    $"Tile ({x},{y}) {i + 1}/{box.Area} {FormatKB(bytes.Length)} (download {downloadTime:#,0}ms{(downloadTime > 5000 ? " !!!" : "")})");
+                // Console.WriteLine(
+                //     $"Tile ({x},{y}) {i + 1}/{box.Area} {FormatKB(bytes.Length)} (download {downloadTime:#,0}ms{(downloadTime > 5000 ? " !!!" : "")})");
+                done++;
+                progressBar.Report(done);
+
                 return Image.Load<Rgba32>(bytes);
             }
             catch (HttpRequestException e)
@@ -87,26 +96,36 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
             return new Image<Rgba32>(256, 256, new Rgba32(255, 0, 255));
         });
 
-        return await Task.WhenAll(tasks);
+        var result = await Task.WhenAll(tasks);
+
+        progressBar.Dispose();
+        Console.WriteLine("Done.");
+
+        return result;
     }
-    
+
+    // private async Task<Image<Rgba32>> DownloadTile(((uint x, uint y), int i) data)
+    // {
+    //     
+    // }
+
     public static async Task<Image<Rgba32>[]> DownloadTiles(BoundingBox box, int zoom)
     {
         var client = Program.serviceProvider.GetService<ITileDownloaderHttpClient>();
 
         if (client == null) return null;
-        
+
         var stopwatch = new Stopwatch();
-        
+
         stopwatch.Start();
-        var tiles = await client.DownloadTiles(box, zoom, 100, 500);
+        var tiles = await client.DownloadTiles(box, zoom, 400, 1000);
         stopwatch.Stop();
-        
+
         Console.WriteLine(
             $"Downloaded {box.Area} tiles ({FormatKB(client.BytesDownloaded)}) in {stopwatch.ElapsedMilliseconds:#,0}ms (average size {FormatKB(client.BytesDownloaded / box.Area)})");
         return tiles;
     }
-    
+
     private static string FormatKB(long bytes)
     {
         return $"{bytes / 1024f:#,0.0}kB";

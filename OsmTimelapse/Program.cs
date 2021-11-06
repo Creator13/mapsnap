@@ -21,7 +21,7 @@ public static class Program
         
         var cornerA = new Coordinates("51.9761;4.1288");
         var cornerB = new Coordinates("52.0533;4.4113");
-        var zoom = 17;
+        var zoom = 14;
 
         (uint x, uint y) a = (Tiles.LongToTileX(cornerA.longitude, zoom), Tiles.LatToTileY(cornerA.latitude, zoom));
         (uint x, uint y) b = (Tiles.LongToTileX(cornerB.longitude, zoom), Tiles.LatToTileY(cornerB.latitude, zoom));
@@ -58,7 +58,7 @@ public static class Program
         // Thread.Sleep(1000);
         var tiles = await TileDownloaderHttpClient.DownloadTiles(box, zoom);
         // if (tiles == null) return;
-        MakeImage((int) box.Width, (int) box.Height, tiles);
+        // MakeImage((int) box.Width, (int) box.Height, tiles);
 
         return 0;
     }
