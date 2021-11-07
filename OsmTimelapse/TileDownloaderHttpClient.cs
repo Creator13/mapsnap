@@ -108,7 +108,7 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
 
     public static async Task<Image<Rgba32>[]> DownloadTiles(BoundingBox box, int zoom)
     {
-        var client = Program.serviceProvider.GetService<ITileDownloaderHttpClient>();
+        var client = MapSnapProgram.ServiceProvider.GetService<ITileDownloaderHttpClient>();
 
         if (client == null) return null;
 

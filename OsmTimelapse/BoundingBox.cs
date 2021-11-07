@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace OsmTimelapse;
 
+[Serializable]
 public readonly struct BoundingBox
 {
-    public (uint x, uint y) Origin { get;}
-    public uint Width { get; }
-    public uint Height { get; }
+    public (uint x, uint y) Origin { get; init; }
+    public uint Width { get; init; }
+    public uint Height { get; init; }
 
     public (uint x, uint y) TopLeft => Origin;
     public (uint x, uint y) TopRight => (Origin.x + Width, Origin.y);
