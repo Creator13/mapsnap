@@ -71,7 +71,7 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
                 {
                     await Console.Error.WriteLineAsync(
                         $"Unexpected response from OSM tile server: {(int)response.StatusCode} {response.StatusCode}. Please report to the developers.");
-                    return new Image<Rgba32>(256, 256, new Rgba32(255, 0, 255));
+                    return Tiles.BlankTile;
                 }
 
                 var bytes = await response.Content.ReadAsByteArrayAsync();
@@ -95,7 +95,7 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
                 Console.WriteLine(e);
             }
 
-            return new Image<Rgba32>(256, 256, new Rgba32(255, 0, 255));
+            return Tiles.BlankTile;
         });
 
         var result = await Task.WhenAll(tasks);

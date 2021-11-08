@@ -8,7 +8,7 @@ public record ProjectContext
 {
     public enum FilenamePolicy { Index, Date }
 
-    public enum FileType { Png, Jpg, }
+    public enum FileType { Png, Jpg }
 
     public string Name { get; init; } = "";
     public BoundingBox Area { get; init; }

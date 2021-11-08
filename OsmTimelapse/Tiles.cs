@@ -1,9 +1,14 @@
 ﻿using System;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace OsmTimelapse;
 
 public static class Tiles
 {
+    public const int TILE_SIZE = 256;
+    public static Image<Rgba32> BlankTile => new (TILE_SIZE, TILE_SIZE, new Rgba32(255, 0, 255));
+
     private static ulong urlIndex;
 
     public static uint LongToTileX(double lon, int z)

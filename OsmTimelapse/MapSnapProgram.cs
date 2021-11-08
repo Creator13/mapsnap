@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using CommandLine;
 using ConsoleTools;
 using Microsoft.Extensions.DependencyInjection;
+using OsmTimelapse.CommandLine;
 using OsmTimelapse.Projects;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
@@ -24,8 +25,11 @@ public static class MapSnapProgram
         services.AddHttpClient<ITileDownloaderHttpClient, TileDownloaderHttpClient>();
         ServiceProvider = services.BuildServiceProvider();
 
-        Parser.Default.ParseArguments<Options>(args);
+        Parser.Default.ParseArguments<NewOptions, object>(args).MapResult(
+            (NewOptions o) => NewCommand(o),
+            errors => 1);
 
+        return 0;
         var cornerA = new Coordinates("51.9761;4.1288");
         var cornerB = new Coordinates("52.0533;4.4113");
         var zoom = 14;
@@ -85,13 +89,60 @@ public static class MapSnapProgram
         return 0;
     }
 
+    public static int NewCommand(NewOptions o)
+    {
+        Console.WriteLine($"Name: {o.Name}");
+        Console.WriteLine($"CoordA: {o.CoordA}");
+        Console.WriteLine($"CoordB: {o.CoordB}");
+        Console.WriteLine($"FileType: {o.FileType}");
+        Console.WriteLine($"NameFormat: {o.NameFormat}");
+
+        if (!(ValidateCoordinate(o.CoordA) && ValidateCoordinate(o.CoordB)))
+        {
+            return 1;
+        }
+        
+        var coordA = new Coordinates(o.CoordA);
+        var coordB = new Coordinates(o.CoordB);
+        
+        if (!Enum.TryParse(o.FileType, out ProjectContext.FileType fileType))
+        {
+            var allowed = string.Join(", ", Enum.GetNames<ProjectContext.FileType>()).ToLower();
+            Console.WriteLine($"Invalid file type parameter: {o.FileType}. Allowed values: {allowed}");
+            return 1;
+        }
+        
+        if (!Enum.TryParse(o.NameFormat, out ProjectContext.FilenamePolicy filenamePolicy))
+        {
+            var allowed = string.Join(", ", Enum.GetNames<ProjectContext.FilenamePolicy>()).ToLower();
+            Console.WriteLine($"Invalid file name format parameter: {o.NameFormat}. Allowed values: {allowed}");
+            return 1;
+        }
+
+        return 0;
+    }
+
+    private static bool ValidateCoordinate(string coord)
+    {
+        if (!Coordinates.IsValidCoordinateString(coord))
+        {
+            Console.WriteLine($"Invalid coordinates: {coord}");
+            return false;
+        }
+
+        return true;
+    }
+    
     public static void MakeImage(int tileCountX, int tileCountY, Image<Rgba32>[] tiles)
     {
-        using var newImage = new Image<Rgba32>(tileCountX * 256, tileCountY * 256);
+        var width = tileCountX * Tiles.TILE_SIZE;
+        var height = tileCountY * Tiles.TILE_SIZE;
+
+        using var newImage = new Image<Rgba32>(width, height);
         for (var j = 0; j < tiles.Length; j++)
         {
-            newImage.Mutate(o => o.DrawImage(tiles[j], new Point(j % tileCountX * 256, j / tileCountX * 256), 1f));
-            Console.WriteLine($"Processed {j + 1}/{tiles.Length}");
+            var jCopy = j;
+            newImage.Mutate(o => o.DrawImage(tiles[jCopy], new Point(jCopy % width, jCopy / width), 1f));
         }
 
         var encoder = new PngEncoder {
