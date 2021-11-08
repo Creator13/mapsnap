@@ -4,76 +4,15 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using ConsoleTools;
 
-namespace OsmTimelapse;
-
-#nullable enable
-[Serializable]
-public record ProjectContext
-{
-    private delegate string FilenameFormatter(string basename, FileType type);
-
-    public enum FilenamePolicy { Index, Date }
-
-    public enum FileType { Png, Jpg, }
-
-    public string Name { get; init; } = "";
-    public BoundingBox Area { get; init; }
-
-    public FilenamePolicy OutputFilenamePolicy { get; init; } = FilenamePolicy.Date;
-    public FileType OutputFileType { get; init; } = FileType.Png;
-
-    public string GetNextFilename()
-    {
-        FilenameFormatter formatter;
-
-        switch (OutputFilenamePolicy)
-        {
-            case FilenamePolicy.Index:
-                formatter = GetIndexFilename;
-                break;
-            case FilenamePolicy.Date:
-            default:
-                formatter = GetDateFilename;
-                break;
-        }
-
-        return AddExtension(formatter(Name, OutputFileType), OutputFileType);
-    }
-
-    private static string GetIndexFilename(string baseName, FileType type)
-    {
-        var index = 0;
-        string filename;
-
-        do
-        {
-            filename = $"{baseName}{index++}";
-        } while (File.Exists(AddExtension(filename, type)));
-
-        return filename;
-    }
-
-    private static string GetDateFilename(string baseName, FileType type)
-    {
-        var date = DateTime.Now;
-        var dateString = $"{date:s}".Replace('_', '_').Replace('T', ' ');
-        return $"{baseName}{(!string.IsNullOrEmpty(baseName) ? " " : "")}{dateString}";
-    }
-
-    private static string AddExtension(string filename, FileType type)
-    {
-        return $"{filename}.{type.ToString().ToLower()}";
-    }
-}
-#nullable restore
-
-public class SnakeCaseNamingPolicy : JsonNamingPolicy
-{
-    public override string ConvertName(string name) => name.ToSnakeCase();
-}
+namespace OsmTimelapse.Projects;
 
 public static class ProjectTools
 {
+    private class SnakeCaseNamingPolicy : JsonNamingPolicy
+    {
+        public override string ConvertName(string name) => name.ToSnakeCase();
+    }
+    
     private const string PROJECT_FILE_NAME = "mapsnap.json";
 
     private static readonly JsonSerializerOptions serializerOptions = new() {

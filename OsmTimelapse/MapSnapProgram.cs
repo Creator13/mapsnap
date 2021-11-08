@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using CommandLine;
 using ConsoleTools;
 using Microsoft.Extensions.DependencyInjection;
+using OsmTimelapse.Projects;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
