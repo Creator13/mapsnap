@@ -4,7 +4,7 @@ namespace ConsoleTools;
 
 public class ConsoleFunctions
 {
-    public static bool ConsoleConfirm(string prompt, bool defaultValue)
+    public static bool ConfirmPrompt(string prompt, bool defaultValue)
     {
         var yesNo = $"[{(defaultValue ? "Y" : "y")}/{(!defaultValue ? "N" : "n")}]";
 

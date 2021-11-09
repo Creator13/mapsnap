@@ -1,15 +1,12 @@
 ﻿using System.Linq;
-using System.Text;
 
-public static class StringUtils
+namespace cvanbattum.Utils
 {
-    public static string ToSnakeCase(this string str)
+    public static class StringUtils
     {
-        return string.Concat(str.Select((x, i) => i > 0 && char.IsUpper(x) ? "_" + x.ToString() : x.ToString())).ToLower();
-    }
-
-    public static string ToArrayString(this object[] arr)
-    {
-        return string.Join(", ", arr);
+        public static string ToSnakeCase(this string str)
+        {
+            return string.Concat(str.Select((x, i) => i > 0 && char.IsUpper(x) ? "_" + x.ToString() : x.ToString())).ToLower();
+        }
     }
 }

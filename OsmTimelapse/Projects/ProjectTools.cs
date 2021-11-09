@@ -1,18 +1,29 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using ConsoleTools;
+using cvanbattum.Utils;
 
 namespace OsmTimelapse.Projects;
 
 public static class ProjectTools
 {
+    public enum ProjectExistenceMatch
+    {
+        NoMatch,
+        MatchingFolderEmpty,
+        MatchingFolderNotEmpty,
+        MatchingFile,
+        MatchingFileInvalid,
+        MatchingFileAndName
+    }
+
     private class SnakeCaseNamingPolicy : JsonNamingPolicy
     {
         public override string ConvertName(string name) => name.ToSnakeCase();
     }
-    
+
     private const string PROJECT_FILE_NAME = "mapsnap.json";
 
     private static readonly JsonSerializerOptions serializerOptions = new() {
@@ -24,54 +35,84 @@ public static class ProjectTools
         IgnoreReadOnlyProperties = true
     };
 
-    private static string ApplicationPath => Environment.CurrentDirectory;
-
     public static bool HasProject()
     {
         return File.Exists($@"{PROJECT_FILE_NAME}");
     }
 
-    public static ProjectContext GenerateProject(string name, Coordinates cornerA, Coordinates cornerB, int zoom)
+    public static ProjectExistenceMatch ProjectExists(string projectName)
     {
-        (uint x, uint y) a = (Tiles.LongToTileX(cornerA.longitude, zoom), Tiles.LatToTileY(cornerA.latitude, zoom));
-        (uint x, uint y) b = (Tiles.LongToTileX(cornerB.longitude, zoom), Tiles.LatToTileY(cornerB.latitude, zoom));
+        var path = $@"{projectName}/{PROJECT_FILE_NAME}";
 
-        var box = new BoundingBox(a, b);
-
-        return GenerateProject(name, box);
-    }
-
-    public static ProjectContext GenerateProject(string name, BoundingBox area)
-    {
-        return new ProjectContext {
-            Name = name,
-            Area = area
-        };
-    }
-
-    public static void SaveProject(ProjectContext context)
-    {
-        // TODO move this somewhere else because user interaction is not supposed to be a responsibility of this class
-        if (HasProject())
+        if (File.Exists(path))
         {
-            if (!ConsoleFunctions.ConsoleConfirm("Are you sure you want to create a new project in an existing project folder?", true))
+            try
             {
-                return;
+                var project = LoadProject(path);
+                if (project.Name == projectName)
+                {
+                    return ProjectExistenceMatch.MatchingFileAndName;
+                }
+
+                return ProjectExistenceMatch.MatchingFile;
+            }
+            // JSON parsing of the project may yield an error. We're not interested in what or why it went wrong. All we need to know is
+            // that something went wrong with the file (ie. it is invalid), since this is only a check for file existence.
+            catch (Exception e) when (e is JsonException or NotSupportedException)
+            {
+                return ProjectExistenceMatch.MatchingFileInvalid;
             }
         }
 
-        using var fs = File.Create($@"{context.Name}/{PROJECT_FILE_NAME}");
-        JsonSerializer.SerializeAsync(fs, context, serializerOptions);
+        if (Directory.Exists(projectName))
+        {
+            if (Directory.EnumerateFiles(projectName).Any())
+            {
+                return ProjectExistenceMatch.MatchingFolderNotEmpty;
+            }
 
-        Console.WriteLine($"Successfully created project \"{context.Name}\"!");
+            return ProjectExistenceMatch.MatchingFolderEmpty;
+        }
+
+        return ProjectExistenceMatch.NoMatch;
     }
 
-    public static ProjectContext LoadProject()
+    public static void SaveProject(ProjectContext project)
     {
-        var jsonBytes = new ReadOnlySpan<byte>(File.ReadAllBytes(PROJECT_FILE_NAME));
+        var path = CreateProjectFilePath(project.Name);
+        try
+        {
+            Directory.CreateDirectory(project.Name);
+            using var fs = File.Create(path);
+            JsonSerializer.SerializeAsync(fs, project, serializerOptions);
+
+            Console.WriteLine($"Successfully created project \"{project.Name}\" in folder {project.Name}/");
+        }
+        catch (Exception e) when (e is NotSupportedException or PathTooLongException)
+        {
+            Console.Error.WriteLine($"Invalid project name: {project.Name}!");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"Couldn't get access to project file at {path}!");
+        }
+        catch (Exception)
+        {
+            Console.Error.WriteLine($"An error occured while creating project at {path}:");
+            throw;
+        }
+    }
+
+    public static ProjectContext LoadProject(string path)
+    {
+        var jsonBytes = new ReadOnlySpan<byte>(File.ReadAllBytes(path));
         var deserializedProject = JsonSerializer.Deserialize<ProjectContext>(jsonBytes, serializerOptions);
         return deserializedProject;
     }
+
+    public static ProjectContext LoadProject() => LoadProject(PROJECT_FILE_NAME);
+
+    private static string CreateProjectFilePath(string projectName) => $@"{projectName}/{PROJECT_FILE_NAME}";
 }
 
 public static class ProjectContextExtensions
