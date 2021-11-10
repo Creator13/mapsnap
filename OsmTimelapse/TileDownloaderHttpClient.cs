@@ -118,8 +118,9 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
         var tiles = await client.DownloadTiles(box, zoom, 3);
         stopwatch.Stop();
 
-        Console.WriteLine(
-            $"Downloaded {box.Area} tiles ({FormatKB(client.BytesDownloaded)}) in {stopwatch.ElapsedMilliseconds:#,0}ms (average size {FormatKB(client.BytesDownloaded / box.Area)}, average time {client.DownloadTime / (double) box.Area:#,0}ms)");
+        var formattedTime = stopwatch.ElapsedMilliseconds < 1000 ? $"{stopwatch.ElapsedMilliseconds:#,0}ms" : $"{stopwatch.ElapsedMilliseconds / 1000d:#,0.000}s";
+        
+        Console.WriteLine($"Downloaded {box.Area} tiles ({FormatKB(client.BytesDownloaded)}) in {formattedTime} (average size {FormatKB(client.BytesDownloaded / box.Area)}, average time {client.DownloadTime / (double) box.Area:#,0}ms)");
         return tiles;
     }
 

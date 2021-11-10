@@ -40,15 +40,19 @@ public static class ProjectTools
         return File.Exists($@"{PROJECT_FILE_NAME}");
     }
 
+    public static bool HasProject(string name)
+    {
+        return ProjectExists(name) == ProjectExistenceMatch.MatchingFileAndName;
+    }
+
     public static ProjectExistenceMatch ProjectExists(string projectName)
     {
         var path = $@"{projectName}/{PROJECT_FILE_NAME}";
 
         if (File.Exists(path))
         {
-            try
+            if (LoadProject(path, out var project))
             {
-                var project = LoadProject(path);
                 if (project.Name == projectName)
                 {
                     return ProjectExistenceMatch.MatchingFileAndName;
@@ -56,12 +60,8 @@ public static class ProjectTools
 
                 return ProjectExistenceMatch.MatchingFile;
             }
-            // JSON parsing of the project may yield an error. We're not interested in what or why it went wrong. All we need to know is
-            // that something went wrong with the file (ie. it is invalid), since this is only a check for file existence.
-            catch (Exception e) when (e is JsonException or NotSupportedException)
-            {
-                return ProjectExistenceMatch.MatchingFileInvalid;
-            }
+
+            return ProjectExistenceMatch.MatchingFileInvalid;
         }
 
         if (Directory.Exists(projectName))
@@ -84,7 +84,7 @@ public static class ProjectTools
         {
             Directory.CreateDirectory(project.Name);
             using var fs = File.Create(path);
-            JsonSerializer.SerializeAsync(fs, project, serializerOptions);
+            JsonSerializer.Serialize(fs, project, serializerOptions);
 
             Console.WriteLine($"Successfully created project \"{project.Name}\" in folder {project.Name}/");
         }
@@ -103,14 +103,23 @@ public static class ProjectTools
         }
     }
 
-    public static ProjectContext LoadProject(string path)
+    public static bool LoadProject(string path, out ProjectContext project)
     {
-        var jsonBytes = new ReadOnlySpan<byte>(File.ReadAllBytes(path));
-        var deserializedProject = JsonSerializer.Deserialize<ProjectContext>(jsonBytes, serializerOptions);
-        return deserializedProject;
+        try
+        {
+            var jsonBytes = new ReadOnlySpan<byte>(File.ReadAllBytes(path));
+            project = JsonSerializer.Deserialize<ProjectContext>(jsonBytes, serializerOptions);
+            return true;
+        }
+        catch (Exception e) when (e is NotSupportedException or JsonException)
+        {
+            Console.WriteLine(e);
+            project = null;
+            return false;
+        }
     }
 
-    public static ProjectContext LoadProject() => LoadProject(PROJECT_FILE_NAME);
+    public static bool LoadProject(out ProjectContext project) => LoadProject(PROJECT_FILE_NAME, out project);
 
     private static string CreateProjectFilePath(string projectName) => $@"{projectName}/{PROJECT_FILE_NAME}";
 }

@@ -3,22 +3,22 @@ using System.IO;
 
 namespace OsmTimelapse.Projects;
 
-public interface IFilenameFormatter
+internal interface IFilenameFormatter
 {
     string Format(string basename, ProjectContext.FileType type);
 }
 
-public class DateFilenameFormatter : IFilenameFormatter
+internal class DateFilenameFormatter : IFilenameFormatter
 {
     public string Format(string baseName, ProjectContext.FileType type)
     {
         var date = DateTime.Now;
-        var dateString = $"{date:s}".Replace('_', '_').Replace('T', ' ');
+        var dateString = $"{date:s}".Replace(':', '_').Replace('T', ' ');
         return $"{baseName}{(!string.IsNullOrEmpty(baseName) ? " " : "")}{dateString}";
     }
 }
 
-public class IndexFilenameFormatter : IFilenameFormatter
+internal class IndexFilenameFormatter : IFilenameFormatter
 {
     public string Format(string baseName, ProjectContext.FileType type)
     {
