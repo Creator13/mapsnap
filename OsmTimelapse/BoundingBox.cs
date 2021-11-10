@@ -15,7 +15,7 @@ public readonly struct BoundingBox
     public (uint x, uint y) BottomLeft => (Origin.x, Origin.y + Height);
     public (uint x, uint y) BottomRight => (Origin.x + Width, Origin.y + Height);
 
-    public int Area => (int) Height * (int) Width;
+    public int Area => (int)Height * (int)Width;
 
     public BoundingBox((uint x, uint y) a, (uint x, uint y) b)
     {
@@ -53,8 +53,8 @@ public readonly struct BoundingBox
         // (x,y) - - (x,y)
         // TODO clean this up with string.format (or interpolation $ with formatting)
 
-        var top = new [] {$"({TopLeft.x},{TopLeft.y})", $"({TopRight.x},{TopRight.y})"};
-        var bottom = new [] {$"({BottomLeft.x},{BottomLeft.y})", $"({BottomRight.x},{BottomRight.y})"};
+        var top = new[] { $"({TopLeft.x},{TopLeft.y})", $"({TopRight.x},{TopRight.y})" };
+        var bottom = new[] { $"({BottomLeft.x},{BottomLeft.y})", $"({BottomRight.x},{BottomRight.y})" };
         var topLength = top[0].Length + top[1].Length;
         var bottomLength = bottom[0].Length + bottom[1].Length;
         var width = Math.Max(topLength, bottomLength) + 5;
@@ -68,7 +68,7 @@ public readonly struct BoundingBox
         }
 
         boxString.Append("- ").Append(top[1]).AppendLine();
-            
+
         // Line 2
         boxString.Append(' ').Append('|');
         for (var i = 0; i < width - 2; i++)
@@ -77,7 +77,7 @@ public readonly struct BoundingBox
         }
 
         boxString.Append('|').AppendLine();
-            
+
         // Line 3
         boxString.Append(' ').Append(bottom[0]).Append(" - ");
         for (var i = 0; i < width - (bottomLength + 5); i++)

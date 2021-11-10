@@ -15,7 +15,7 @@ namespace OsmTimelapse;
 public static class MapSnapProgram
 {
     public static ServiceProvider ServiceProvider { get; private set; }
-    public static ProjectContext ProjectContext { get; private set; }
+    private static ProjectContext ProjectContext { get; set; }
 
     public static async Task<int> Main(string[] args)
     {
@@ -54,48 +54,7 @@ public static class MapSnapProgram
         snapCommnand.Handler = CommandHandler.Create(SnapCommandHandler);
         rootCommand.Add(snapCommnand);
 
-        return rootCommand.InvokeAsync(args).Result;
-
-        var cornerA = new Coordinates("51.9761 4.1288");
-        var cornerB = new Coordinates("52.0533 4.4113");
-        var zoom = 14;
-
-        (uint x, uint y) a = (Tiles.LongToTileX(cornerA.longitude, zoom), Tiles.LatToTileY(cornerA.latitude, zoom));
-        (uint x, uint y) b = (Tiles.LongToTileX(cornerB.longitude, zoom), Tiles.LatToTileY(cornerB.latitude, zoom));
-
-        var box = new BoundingBox(a, b);
-
-        // if (args is { Length: > 0 } && args[0] != null)
-        // {
-        //     if (args[0].ToLower() == "new")
-        //     {
-        //         var project = ProjectTools.GenerateProject("delft", box);
-        //         ProjectTools.SaveProject(project);
-        //
-        //         return 0;
-        //     }
-        //     else if (args[0].ToLower() == "load")
-        //     {
-        //         if (!ProjectTools.HasProject())
-        //         {
-        //             Console.WriteLine("No project found!");
-        //             return 0;
-        //         }
-        //
-        //         ProjectContext = ProjectTools.LoadProject();
-        //         ProjectContext.LogDetectedProject();
-        //
-        //         box = ProjectContext.Area;
-        //     }
-        // }
-
-        Console.WriteLine($"Corner A URL: {Tiles.GetTileUrl(a, zoom)}");
-        Console.WriteLine($"Corner B URL: {Tiles.GetTileUrl(b, zoom)}");
-
-        Console.WriteLine(box.ToString());
-        Console.WriteLine($"Final image size: {box.Width * 256}x{box.Height * 256}px ({box.Area * 256L * 256L / 1_000_000.0:#,0.0}MP)");
-
-        return 0;
+        return await rootCommand.InvokeAsync(args);
     }
 
     // public static int NewCommand(NewOptions o)
@@ -134,42 +93,31 @@ public static class MapSnapProgram
     private static int InitCommandHandler(string name, string coordA, string coordB, int zoom,
         ProjectContext.FileType fileType, ProjectContext.FilenamePolicy nameFormat)
     {
-        // Console.WriteLine($"Name: {name}");
-        // Console.WriteLine($"CoordA: {coordA}");
-        // Console.WriteLine($"CoordB: {coordB}");
-        // Console.WriteLine($"FileType: {fileType}");
-        // Console.WriteLine($"NameFormat: {nameFormat}");
-
         // Check if the coordinates are valid
         if (!(ValidateCoordinate(coordA) && ValidateCoordinate(coordB))) return 1;
 
         // Confirm what to do if the project already exists in some way.
-        switch (ProjectTools.ProjectExists(name))
+        var existence = ProjectTools.ProjectExists(name);
+        if (existence != ProjectTools.ProjectExistenceMatch.NoMatch)
         {
-            case ProjectTools.ProjectExistenceMatch.NoMatch:
-                break;
-            case ProjectTools.ProjectExistenceMatch.MatchingFolderEmpty:
-                if (!ConsoleFunctions.ConfirmPrompt($"An empty folder named /{name} already exists. Create project inside?", true))
-                    return 0;
-                break;
-            case ProjectTools.ProjectExistenceMatch.MatchingFolderNotEmpty:
-                if (!ConsoleFunctions.ConfirmPrompt($"An folder named {name} already exists and contains files. Create project inside?", true))
-                    return 0;
-                break;
-            case ProjectTools.ProjectExistenceMatch.MatchingFile:
-                if (!ConsoleFunctions.ConfirmPrompt($"A different project already exists in folder /{name}. Overwrite?", false))
-                    return 0;
-                break;
-            case ProjectTools.ProjectExistenceMatch.MatchingFileInvalid:
-                if (!ConsoleFunctions.ConfirmPrompt($"Found an invalid project in folder /{name}. Overwrite?", true))
-                    return 0;
-                break;
-            case ProjectTools.ProjectExistenceMatch.MatchingFileAndName:
-                if (!ConsoleFunctions.ConfirmPrompt($"A project named \"{name}\" already exists! Overwrite with new settings?", false))
-                    return 0;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException();
+            var (prompt, defaultVal) = existence switch {
+                ProjectTools.ProjectExistenceMatch.MatchingFolderEmpty =>
+                    ($"An empty folder named /{name} already exists. Create project inside?", true),
+                ProjectTools.ProjectExistenceMatch.MatchingFolderNotEmpty =>
+                    ($"An folder named {name} already exists and contains files. Create project inside?", true),
+                ProjectTools.ProjectExistenceMatch.MatchingFile =>
+                    ($"A different project already exists in folder /{name}. Overwrite?", false),
+                ProjectTools.ProjectExistenceMatch.MatchingFileInvalid =>
+                    ($"Found an invalid project in folder /{name}. Overwrite?", true),
+                ProjectTools.ProjectExistenceMatch.MatchingFileAndName =>
+                    ($"A project named \"{name}\" already exists! Overwrite with new settings?", false),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+
+            if (!ConsoleFunctions.ConfirmPrompt(prompt, defaultVal))
+            {
+                return 0;
+            }   
         }
 
         ProjectContext = new ProjectContext(coordA, coordB, zoom) {
@@ -243,21 +191,21 @@ public static class MapSnapProgram
         Console.WriteLine($"Final image size: {box.Width * 256}x{box.Height * 256}px ({box.Area * 256L * 256L / 1_000_000.0:#,0.0}MP)");
 
         var tiles = await TileDownloaderHttpClient.DownloadTiles(box, ProjectContext.Zoom);
-        
+
         Console.WriteLine("Saving image (this may take a while if you're snapping a large area)...");
         using var image = MakeImage((int)box.Width, (int)box.Height, tiles);
-        
+
         var encoder = new PngEncoder {
             CompressionLevel = PngCompressionLevel.DefaultCompression,
             BitDepth = PngBitDepth.Bit8
         };
 
         var name = ProjectContext != null ? ProjectContext.GetNextFilename() : "output.png";
-        
+
         await image.SaveAsync(name, encoder);
-        
+
         Console.WriteLine($"Saved snapshot as {name}!");
-        
+
         return 0;
     }
 
@@ -272,7 +220,7 @@ public static class MapSnapProgram
         return true;
     }
 
-    public static Image<Rgba32> MakeImage(int tileCountX, int tileCountY, Image<Rgba32>[] tiles)
+    private static Image<Rgba32> MakeImage(int tileCountX, int tileCountY, Image<Rgba32>[] tiles)
     {
         var width = tileCountX * Tiles.TILE_SIZE;
         var height = tileCountY * Tiles.TILE_SIZE;

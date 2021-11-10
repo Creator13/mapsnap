@@ -7,9 +7,9 @@ namespace OsmTimelapse;
 public static class Tiles
 {
     public const int TILE_SIZE = 256;
-    public static Image<Rgba32> BlankTile => new (TILE_SIZE, TILE_SIZE, new Rgba32(255, 0, 255));
 
     private static ulong urlIndex;
+    public static Image<Rgba32> BlankTile => new(TILE_SIZE, TILE_SIZE, new Rgba32(255, 0, 255));
 
     public static uint LongToTileX(double lon, int z)
     {
@@ -28,7 +28,7 @@ public static class Tiles
 
     public static double TileYToLat(int y, int z)
     {
-        var n = Math.PI - 2.0 * Math.PI * y / (double)(1 << z);
+        var n = Math.PI - 2.0 * Math.PI * y / (1 << z);
         return 180.0 / Math.PI * Math.Atan(0.5 * (Math.Exp(n) - Math.Exp(-n)));
     }
 
@@ -42,9 +42,15 @@ public static class Tiles
         return $@"https://{(char)('a' + urlIndex++ % 3)}.tile.openstreetmap.org/{zoom}/{x}/{y}.png";
     }
 
-    public static string GetMirrorTileUrl((uint x, uint y) tile, int zoom) => GetMirrorTileUrl(tile.x, tile.y, zoom);
+    public static string GetMirrorTileUrl((uint x, uint y) tile, int zoom)
+    {
+        return GetMirrorTileUrl(tile.x, tile.y, zoom);
+    }
 
-    public static string GetTileUrl((uint x, uint y) tile, int zoom) => GetTileUrl(tile.x, tile.y, zoom);
+    public static string GetTileUrl((uint x, uint y) tile, int zoom)
+    {
+        return GetTileUrl(tile.x, tile.y, zoom);
+    }
 
     public static string GetTileUrl(Coordinates coords, int zoom)
     {

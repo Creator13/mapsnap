@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace OsmTimelapse;
 
@@ -28,7 +29,7 @@ public struct Coordinates
     public override string ToString()
     {
         // \u00b0 = °
-        return $"{latitude.ToString()}\u00B0 {longitude.ToString()}\u00B0";
+        return $"{latitude.ToString(CultureInfo.InvariantCulture)}\u00B0 {longitude.ToString(CultureInfo.InvariantCulture)}\u00B0";
     }
 
     private static double[] ParseCoordinateString(string latLongCoords)

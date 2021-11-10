@@ -24,8 +24,6 @@ public interface ITileDownloaderHttpClient
 public class TileDownloaderHttpClient : ITileDownloaderHttpClient
 {
     private readonly HttpClient httpClient;
-    public long BytesDownloaded { get; private set; }
-    public long DownloadTime { get; private set; }
 
     private int done;
 
@@ -35,6 +33,9 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
         httpClient.DefaultRequestHeaders.UserAgent.Add(
             new ProductInfoHeaderValue("Mapsnap", $"v{Assembly.GetExecutingAssembly().GetName().Version}"));
     }
+
+    public long BytesDownloaded { get; private set; }
+    public long DownloadTime { get; private set; }
 
     public async Task<Image<Rgba32>[]> DownloadTiles(BoundingBox box, int zoom, int requestLimit = 100, int limitingPeriod = 0)
     {
@@ -118,9 +119,12 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
         var tiles = await client.DownloadTiles(box, zoom, 3);
         stopwatch.Stop();
 
-        var formattedTime = stopwatch.ElapsedMilliseconds < 1000 ? $"{stopwatch.ElapsedMilliseconds:#,0}ms" : $"{stopwatch.ElapsedMilliseconds / 1000d:#,0.000}s";
-        
-        Console.WriteLine($"Downloaded {box.Area} tiles ({FormatKB(client.BytesDownloaded)}) in {formattedTime} (average size {FormatKB(client.BytesDownloaded / box.Area)}, average time {client.DownloadTime / (double) box.Area:#,0}ms)");
+        var formattedTime = stopwatch.ElapsedMilliseconds < 1000
+            ? $"{stopwatch.ElapsedMilliseconds:#,0}ms"
+            : $"{stopwatch.ElapsedMilliseconds / 1000d:#,0.000}s";
+
+        Console.WriteLine(
+            $"Downloaded {box.Area} tiles ({FormatKB(client.BytesDownloaded)}) in {formattedTime} (average size {FormatKB(client.BytesDownloaded / box.Area)}, average time {client.DownloadTime / (double)box.Area:#,0}ms)");
         return tiles;
     }
 

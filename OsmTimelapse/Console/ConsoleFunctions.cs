@@ -2,7 +2,7 @@
 
 namespace ConsoleTools;
 
-public class ConsoleFunctions
+public static class ConsoleFunctions
 {
     public static bool ConfirmPrompt(string prompt, bool defaultValue)
     {

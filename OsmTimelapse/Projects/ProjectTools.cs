@@ -19,11 +19,6 @@ public static class ProjectTools
         MatchingFileAndName
     }
 
-    private class SnakeCaseNamingPolicy : JsonNamingPolicy
-    {
-        public override string ConvertName(string name) => name.ToSnakeCase();
-    }
-
     private const string PROJECT_FILE_NAME = "mapsnap.json";
 
     private static readonly JsonSerializerOptions serializerOptions = new() {
@@ -119,9 +114,23 @@ public static class ProjectTools
         }
     }
 
-    public static bool LoadProject(out ProjectContext project) => LoadProject(PROJECT_FILE_NAME, out project);
+    public static bool LoadProject(out ProjectContext project)
+    {
+        return LoadProject(PROJECT_FILE_NAME, out project);
+    }
 
-    private static string CreateProjectFilePath(string projectName) => $@"{projectName}/{PROJECT_FILE_NAME}";
+    private static string CreateProjectFilePath(string projectName)
+    {
+        return $@"{projectName}/{PROJECT_FILE_NAME}";
+    }
+
+    private class SnakeCaseNamingPolicy : JsonNamingPolicy
+    {
+        public override string ConvertName(string name)
+        {
+            return name.ToSnakeCase();
+        }
+    }
 }
 
 public static class ProjectContextExtensions
