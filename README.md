@@ -25,7 +25,7 @@ To use on Linux or MacOS, you'll need to clone this github repo and compile the 
 
 # Getting started
 With mapsnap installed and added to the PATH, you'll want to open a new terminal window. On Windows, you can use Windows Terminal, Command Line (cmd.exe), or PowerShell (ps.exe). On MacOS/Linux, open your system terminal.
-***
+
 ## Create a project
 To create a new project, run:
 ```sh
@@ -50,8 +50,6 @@ The zoom level can be found in the url on openstreetmap.com. Navigate to a place
 https://www.openstreetmap.org/#map=15/52.3728/4.8936
 ```
 The part with `#map=15` indicates that the zoom level is `15` on this url.
-
-***
 
 ## Snap an image
 In your terminal, navigate to your project folder. Using your file explorer you can navigate to the folder, then shift+right click somewhere and select "Open in terminal/powershell". 
