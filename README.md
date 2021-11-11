@@ -31,7 +31,7 @@ To create a new project, run:
 ```sh
 > mapsnap init myProject "52.3990,4.8591" "52.3393,4.9781" 15
 ```
-This will create a new folder and project called myProject of Amsterdam at zoom level 15. For more info on the `init` command, including all the optional parameters, see this [wiki page (WIP)](#).
+This will create a new folder and project called myProject of Amsterdam at zoom level 15. For more info on the `init` command, including all the optional parameters, see this [wiki page](https://github.com/Creator13/mapsnap/wiki/init).
 
 ### **Where do I find my coordinates and zoom level?**
 You can get your coordinates from any source, like Google Maps or openstreetmap.com. Navigate to your area of interest and choose two points as the outermost corners of your image.
@@ -65,7 +65,7 @@ Once in your folder, simply run:
 ```
 After the program is done, your project folder will contain a new map snapshot!
 
-For more info on the `snap` command, see this [wiki page (WIP)](#).
+For more info on the `snap` command, see this [wiki page](https://github.com/Creator13/mapsnap/wiki/snap).
 
 # Contributing
 If you want to contribute, please open an issue or a pull request!
