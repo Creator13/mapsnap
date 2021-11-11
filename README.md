@@ -72,3 +72,7 @@ If you want to contribute, please open an issue or a pull request!
 
 # License
 This project is licensed under the GNU GPLv3 license.
+
+# See also
+- https://www.openstreetmap.org
+- OpenStreetMap tilemap wiki: https://wiki.openstreetmap.org/wiki/Slippy_map_tilename
