@@ -26,10 +26,18 @@ public static class MapSnapProgram
         var rootCommand = new RootCommand();
 
         var initCommand = new Command("init") {
-            new Argument<string>("name"),
-            new Argument<string>("coordA"),
-            new Argument<string>("coordB"),
-            new Argument<int>("zoom"),
+            new Argument<string>("name") {
+                Description = "Five your project a name."
+            },
+            new Argument<string>("coordA") {
+                Description = "A corner of the bounding box of the area you want to capture (decimal coordinates)."
+            },
+            new Argument<string>("coordB"){
+                Description = "A corner of the bounding box of the area you want to capture (decimal coordinates)."
+            },
+            new Argument<int>("zoom") {
+                Description = "The zoom level of the image you want to capture."
+            },
             new Option<ProjectContext.FileType>(
                 new[] { "--file-type", "-t" },
                 () => ProjectContext.FileType.Png,

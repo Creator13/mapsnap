@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="LocationsWithSilentDeleteHolder">
+    <option name="locations">
+      <list>
+        <option value="$PROJECT_DIR$/OsmTimelapse/bin/Release/net6.0/publish/linux" />
+        <option value="$PROJECT_DIR$/OsmTimelapse/bin/Release/net6.0/publish/win64" />
+        <option value="$PROJECT_DIR$/OsmTimelapse/bin/Release/net6.0/publish/linux64" />
+      </list>
+    </option>
+  </component>
+</project>
