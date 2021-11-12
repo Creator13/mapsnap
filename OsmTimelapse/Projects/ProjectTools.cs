@@ -19,7 +19,7 @@ public static class ProjectTools
         MatchingFileAndName
     }
 
-    private const string PROJECT_FILE_NAME = "mapsnap.json";
+    public const string PROJECT_FILE_NAME = "mapsnap.json";
 
     private static readonly JsonSerializerOptions serializerOptions = new() {
         PropertyNamingPolicy = new SnakeCaseNamingPolicy(),
