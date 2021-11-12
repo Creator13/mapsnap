@@ -164,7 +164,10 @@ public static class MapSnapProgram
                 return 1;
             }
 
-            result = ProjectTools.LoadProject(project, out projectCtx);
+            // Simplest way to prefix all files with the project directory is to just switch the program to work in that directory.
+            Environment.CurrentDirectory = project;
+            
+            result = ProjectTools.LoadProject(out projectCtx);
         }
         else
         {
