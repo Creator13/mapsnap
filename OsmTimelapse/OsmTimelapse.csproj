@@ -6,7 +6,7 @@
         <AssemblyName>mapsnap</AssemblyName>
         <RootNamespace>mapsnap</RootNamespace>
         <AssemblyVersion>1.0.1</AssemblyVersion>
-        <InformationalVersion>1.0.1</InformationalVersion>
+        <InformationalVersion>1.0.2</InformationalVersion>
         <NeutralLanguage>en-US</NeutralLanguage>
         <LangVersion>10</LangVersion>
     </PropertyGroup>

@@ -25,9 +25,6 @@ public record ProjectContext
         (uint x, uint y) a = (Tiles.LongToTileX(coordA.longitude, zoom), Tiles.LatToTileY(coordA.latitude, zoom));
         (uint x, uint y) b = (Tiles.LongToTileX(coordB.longitude, zoom), Tiles.LatToTileY(coordB.latitude, zoom));
 
-        Console.WriteLine($"Corner A URL: {Tiles.GetTileUrl(a, zoom)}");
-        Console.WriteLine($"Corner B URL: {Tiles.GetTileUrl(b, zoom)}");
-
         Area = new BoundingBox(a, b);
         Zoom = zoom;
     }

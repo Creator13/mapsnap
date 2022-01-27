@@ -16,6 +16,7 @@ public static class MapSnapProgram
 {
     public static ServiceProvider ServiceProvider { get; private set; }
     private static ProjectContext ProjectContext { get; set; }
+    private static TileServer TileServer => TileServer.defaultTileServer;
 
     public static async Task<int> Main(string[] args)
     {
@@ -32,7 +33,7 @@ public static class MapSnapProgram
             new Argument<string>("coordA") {
                 Description = "A corner of the bounding box of the area you want to capture (decimal coordinates)."
             },
-            new Argument<string>("coordB"){
+            new Argument<string>("coordB") {
                 Description = "A corner of the bounding box of the area you want to capture (decimal coordinates)."
             },
             new Argument<int>("zoom") {
@@ -125,7 +126,7 @@ public static class MapSnapProgram
             if (!ConsoleFunctions.ConfirmPrompt(prompt, defaultVal))
             {
                 return 0;
-            }   
+            }
         }
 
         ProjectContext = new ProjectContext(coordA, coordB, zoom) {
@@ -136,12 +137,18 @@ public static class MapSnapProgram
 
         var box = ProjectContext.Area;
 
+        var validation = ValidateProjectContextBeforeCommand(ProjectContext);
+        if (validation != 0) return validation; 
+
+        Console.WriteLine($"Corner A tile URL: {TileServer.GetTileUrl(box.TopLeft, zoom)}");
+        Console.WriteLine($"Corner B tile URL: {TileServer.GetTileUrl(box.BottomRight, zoom)}");
+
         Console.WriteLine(box.ToString());
         Console.WriteLine($"Final image size: {box.Width * 256}x{box.Height * 256}px ({box.Area * 256L * 256L / 1_000_000.0:#,0.0}MP)");
 
         // Ask user to confirm creating if the output resolution >100MP
         // Converting the Area to long will prevent possible overflow
-        // The largest theoretical size of this number is 2^(2*19) * 256^2 = 2^54, well above int.MaxValue
+        // (The largest theoretical size of this number is 2^(2*19) * 256^2 = 2^54, well above int.MaxValue)
         if ((long)ProjectContext.Area.Area * Tiles.TILE_SIZE * Tiles.TILE_SIZE > 100_000_000L)
         {
             var result = ConsoleFunctions.ConfirmPrompt(
@@ -164,6 +171,8 @@ public static class MapSnapProgram
     {
         ProjectContext projectCtx;
         bool result;
+
+        // If a project name is provided in the command, try to find it.
         if (!string.IsNullOrEmpty(project))
         {
             if (!ProjectTools.HasProject(project))
@@ -174,14 +183,15 @@ public static class MapSnapProgram
 
             // Simplest way to prefix all files with the project directory is to just switch the program to work in that directory.
             Environment.CurrentDirectory = project;
-            
+
             result = ProjectTools.LoadProject(out projectCtx);
         }
+        // If no name is given, detect a project in the current folder (assumes this is a project root folder), and fail if no project was found.
         else
         {
-            if (!ProjectTools.HasProject())
+            if (!ProjectTools.WorkingDirIsProjectRoot())
             {
-                Console.Error.WriteLine("Helo u r not in a project");
+                Console.Error.WriteLine("Not in a project directory!");
                 return 1;
             }
 
@@ -198,10 +208,13 @@ public static class MapSnapProgram
 
         var box = ProjectContext.Area;
 
+        var validation = ValidateProjectContextBeforeCommand(ProjectContext);
+        if (validation != 0) return validation; 
+
         Console.WriteLine(box.ToString());
         Console.WriteLine($"Final image size: {box.Width * 256}x{box.Height * 256}px ({box.Area * 256L * 256L / 1_000_000.0:#,0.0}MP)");
 
-        var tiles = await TileDownloaderHttpClient.DownloadTiles(box, ProjectContext.Zoom);
+        var tiles = await TileDownloaderHttpClient.DownloadTiles(TileServer, box, ProjectContext.Zoom);
 
         Console.WriteLine("Saving image (this may take a while if you're snapping a large area)...");
         using var image = MakeImage((int)box.Width, (int)box.Height, tiles);
@@ -229,6 +242,26 @@ public static class MapSnapProgram
         }
 
         return true;
+    }
+
+    private static int ValidateProjectContextBeforeCommand(ProjectContext ctx)
+    {
+        if (!TileServer.ValidateZoom(ctx.Zoom))
+        {
+            Console.Error.WriteLine(
+                $"Tile server {TileServer.ServerUrl} does not support requested zoom level of {ctx.Zoom}. Must be between {TileServer.MinZoom} and {TileServer.MaxZoom} (inclusive)");
+            return 1;
+        }
+
+        if (!TileServer.ValidateAreaSize(ctx.Area.Area, ctx.Zoom))
+        {
+            Console.Error.WriteLine(
+                $"This area has a size of {ctx.Area.Area}. The OSM server usage policy disallows downloading areas of over {TileServer.MaxArea} at zoom level {TileServer.UnlimitedAreaMaxZoom} or higher. Please choose a smaller area.");
+            Console.Error.WriteLine("More info: https://operations.osmfoundation.org/policies/tiles/#bulk-downloading");
+            return 1;
+        }
+
+        return 0;
     }
 
     private static Image<Rgba32> MakeImage(int tileCountX, int tileCountY, Image<Rgba32>[] tiles)

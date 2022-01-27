@@ -8,7 +8,6 @@ public static class Tiles
 {
     public const int TILE_SIZE = 256;
 
-    private static ulong urlIndex;
     public static Image<Rgba32> BlankTile => new(TILE_SIZE, TILE_SIZE, new Rgba32(255, 0, 255));
 
     public static uint LongToTileX(double lon, int z)
@@ -30,34 +29,6 @@ public static class Tiles
     {
         var n = Math.PI - 2.0 * Math.PI * y / (1 << z);
         return 180.0 / Math.PI * Math.Atan(0.5 * (Math.Exp(n) - Math.Exp(-n)));
-    }
-
-    public static string GetTileUrl(uint x, uint y, int zoom)
-    {
-        return $@"https://tile.openstreetmap.org/{zoom}/{x}/{y}.png";
-    }
-
-    public static string GetMirrorTileUrl(uint x, uint y, int zoom)
-    {
-        return $@"https://{(char)('a' + urlIndex++ % 3)}.tile.openstreetmap.org/{zoom}/{x}/{y}.png";
-    }
-
-    public static string GetMirrorTileUrl((uint x, uint y) tile, int zoom)
-    {
-        return GetMirrorTileUrl(tile.x, tile.y, zoom);
-    }
-
-    public static string GetTileUrl((uint x, uint y) tile, int zoom)
-    {
-        return GetTileUrl(tile.x, tile.y, zoom);
-    }
-
-    public static string GetTileUrl(Coordinates coords, int zoom)
-    {
-        var x = LongToTileX(coords.longitude, zoom);
-        var y = LatToTileY(coords.latitude, zoom);
-
-        return GetTileUrl(x, y, zoom);
     }
 
     private static double ToRadians(double num)

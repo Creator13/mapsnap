@@ -30,7 +30,7 @@ public static class ProjectTools
         IgnoreReadOnlyProperties = true
     };
 
-    public static bool HasProject()
+    public static bool WorkingDirIsProjectRoot()
     {
         return File.Exists($@"{PROJECT_FILE_NAME}");
     }

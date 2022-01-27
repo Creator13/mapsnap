@@ -18,7 +18,7 @@ public interface ITileDownloaderHttpClient
 {
     long BytesDownloaded { get; }
     long DownloadTime { get; }
-    Task<Image<Rgba32>[]> DownloadTiles(BoundingBox box, int zoom, int requestLimit = 100, int limitingPeriod = 0);
+    Task<Image<Rgba32>[]> DownloadTiles(TileServer server, BoundingBox box, int zoom, int requestLimit = 100, int limitingPeriod = 0);
 }
 
 public class TileDownloaderHttpClient : ITileDownloaderHttpClient
@@ -37,7 +37,9 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
     public long BytesDownloaded { get; private set; }
     public long DownloadTime { get; private set; }
 
-    public async Task<Image<Rgba32>[]> DownloadTiles(BoundingBox box, int zoom, int requestLimit = 100, int limitingPeriod = 0)
+    private delegate string UrlFormatter(uint x, uint y, int zoom);
+
+    public async Task<Image<Rgba32>[]> DownloadTiles(TileServer tileServer, BoundingBox box, int zoom, int requestLimit = 2, int limitingPeriod = 0)
     {
         BytesDownloaded = 0;
         done = 0;
@@ -46,6 +48,16 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
 
         var semaphore = new SemaphoreSlim(requestLimit);
 
+        UrlFormatter getUrl;
+        if (tileServer.HasMirrors)
+        {
+            getUrl = tileServer.GetMirrorTileUrl;
+        }
+        else
+        {
+            getUrl = tileServer.GetTileUrl;
+        }
+
         Console.Write($"Downloading {box.Area} tiles: ");
         var progressBar = new ProgressBar(box.Area);
         var tasks = tileData.Select(async data =>
@@ -53,7 +65,7 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
             await semaphore.WaitAsync();
 
             var ((x, y), i) = data;
-            var tileUrl = Tiles.GetMirrorTileUrl(x, y, zoom);
+            var tileUrl = getUrl(x, y, zoom);
 
             var task = httpClient.GetAsync(new Uri(tileUrl));
             _ = task.ContinueWith(async _ =>
@@ -91,7 +103,7 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
             }
             catch (HttpRequestException e)
             {
-                Console.WriteLine($"Could not reach the OSM tile server ({e.StatusCode})! Are you connected to the internet?");
+                Console.WriteLine($"Could not reach the OSM tile server! Are you connected to the internet?");
                 Console.WriteLine($"\tAt tile {tileUrl}");
                 Console.WriteLine(e);
             }
@@ -107,7 +119,7 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
         return result;
     }
 
-    public static async Task<Image<Rgba32>[]> DownloadTiles(BoundingBox box, int zoom)
+    public static async Task<Image<Rgba32>[]> DownloadTiles(TileServer server, BoundingBox box, int zoom)
     {
         var client = MapSnapProgram.ServiceProvider.GetService<ITileDownloaderHttpClient>();
 
@@ -116,7 +128,7 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
         var stopwatch = new Stopwatch();
 
         stopwatch.Start();
-        var tiles = await client.DownloadTiles(box, zoom, 3);
+        var tiles = await client.DownloadTiles(server, box, zoom, 3);
         stopwatch.Stop();
 
         var formattedTime = stopwatch.ElapsedMilliseconds < 1000
