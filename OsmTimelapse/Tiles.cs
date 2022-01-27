@@ -2,7 +2,7 @@
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
-namespace OsmTimelapse;
+namespace mapsnap;
 
 public static class Tiles
 {

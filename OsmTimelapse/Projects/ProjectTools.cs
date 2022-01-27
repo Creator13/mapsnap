@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using cvanbattum.Utils;
 
-namespace OsmTimelapse.Projects;
+namespace mapsnap.Projects;
 
 public static class ProjectTools
 {

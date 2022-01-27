@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text;
 
-namespace OsmTimelapse;
+namespace mapsnap;
 
 [Serializable]
 public readonly struct BoundingBox

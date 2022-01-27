@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace OsmTimelapse.Projects;
+namespace mapsnap.Projects;
 
 internal interface IFilenameFormatter
 {

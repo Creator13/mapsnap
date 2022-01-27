@@ -12,7 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
-namespace OsmTimelapse;
+namespace mapsnap;
 
 public interface ITileDownloaderHttpClient
 {
@@ -39,7 +39,7 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
 
     private delegate string UrlFormatter(uint x, uint y, int zoom);
 
-    public async Task<Image<Rgba32>[]> DownloadTiles(TileServer tileServer, BoundingBox box, int zoom, int requestLimit = 2, int limitingPeriod = 0)
+    public async Task<Image<Rgba32>[]> DownloadTiles(TileServer tileServer, BoundingBox box, int zoom, int requestLimit, int limitingPeriod = 0)
     {
         BytesDownloaded = 0;
         done = 0;
@@ -128,7 +128,7 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
         var stopwatch = new Stopwatch();
 
         stopwatch.Start();
-        var tiles = await client.DownloadTiles(server, box, zoom, 3);
+        var tiles = await client.DownloadTiles(server, box, zoom, server.ParallelLimit);
         stopwatch.Stop();
 
         var formattedTime = stopwatch.ElapsedMilliseconds < 1000

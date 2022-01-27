@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text.Json.Serialization;
 
-namespace OsmTimelapse.Projects;
+namespace mapsnap.Projects;
 
 [Serializable]
 public record ProjectContext

@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace OsmTimelapse;
+﻿namespace mapsnap;
 
 public class TileServer
 {

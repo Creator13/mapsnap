@@ -3,14 +3,14 @@ using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Threading.Tasks;
 using ConsoleTools;
+using mapsnap.Projects;
 using Microsoft.Extensions.DependencyInjection;
-using OsmTimelapse.Projects;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
-namespace OsmTimelapse;
+namespace mapsnap;
 
 public static class MapSnapProgram
 {
@@ -66,39 +66,6 @@ public static class MapSnapProgram
         return await rootCommand.InvokeAsync(args);
     }
 
-    // public static int NewCommand(NewOptions o)
-    // {
-    //     Console.WriteLine($"Name: {o.Name}");
-    //     Console.WriteLine($"CoordA: {o.CoordA}");
-    //     Console.WriteLine($"CoordB: {o.CoordB}");
-    //     Console.WriteLine($"FileType: {o.FileType}");
-    //     Console.WriteLine($"NameFormat: {o.NameFormat}");
-    //
-    //     if (!(ValidateCoordinate(o.CoordA) && ValidateCoordinate(o.CoordB)))
-    //     {
-    //         return 1;
-    //     }
-    //     
-    //     var coordA = new Coordinates(o.CoordA);
-    //     var coordB = new Coordinates(o.CoordB);
-    //     
-    //     if (!Enum.TryParse(o.FileType, out ProjectContext.FileType fileType))
-    //     {
-    //         var allowed = string.Join(", ", Enum.GetNames<ProjectContext.FileType>()).ToLower();
-    //         Console.WriteLine($"Invalid file type parameter: {o.FileType}. Allowed values: {allowed}");
-    //         return 1;
-    //     }
-    //     
-    //     if (!Enum.TryParse(o.NameFormat, out ProjectContext.FilenamePolicy filenamePolicy))
-    //     {
-    //         var allowed = string.Join(", ", Enum.GetNames<ProjectContext.FilenamePolicy>()).ToLower();
-    //         Console.WriteLine($"Invalid file name format parameter: {o.NameFormat}. Allowed values: {allowed}");
-    //         return 1;
-    //     }
-    //
-    //     return 0;
-    // }
-
     private static int InitCommandHandler(string name, string coordA, string coordB, int zoom,
         ProjectContext.FileType fileType, ProjectContext.FilenamePolicy nameFormat)
     {
@@ -138,7 +105,7 @@ public static class MapSnapProgram
         var box = ProjectContext.Area;
 
         var validation = ValidateProjectContextBeforeCommand(ProjectContext);
-        if (validation != 0) return validation; 
+        if (validation != 0) return validation;
 
         Console.WriteLine($"Corner A tile URL: {TileServer.GetTileUrl(box.TopLeft, zoom)}");
         Console.WriteLine($"Corner B tile URL: {TileServer.GetTileUrl(box.BottomRight, zoom)}");
@@ -209,7 +176,7 @@ public static class MapSnapProgram
         var box = ProjectContext.Area;
 
         var validation = ValidateProjectContextBeforeCommand(ProjectContext);
-        if (validation != 0) return validation; 
+        if (validation != 0) return validation;
 
         Console.WriteLine(box.ToString());
         Console.WriteLine($"Final image size: {box.Width * 256}x{box.Height * 256}px ({box.Area * 256L * 256L / 1_000_000.0:#,0.0}MP)");
