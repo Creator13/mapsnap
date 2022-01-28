@@ -5,14 +5,28 @@ using Xunit;
 
 namespace mapsnapTests;
 
-public class TestDataGenerator { }
-
 public class BoundingBoxTests
 {
-    public void BoundingBoxConstruction()
+    public static IEnumerable<object[]> OriginTestData => new List<object[]> {
+        new object[] {
+            new BoundingBox((3, 3), (20, 20)),
+            (3U, 3U)
+        },
+        new object[] {
+            new BoundingBox((20, 20), (3, 3)),
+            (3U, 3U)
+        },
+        new object[] {
+            new BoundingBox((554, 40), (40, 554)),
+            (40U, 40U)
+        },
+    };
+
+    [Theory]
+    [MemberData(nameof(OriginTestData))]
+    public void OriginIsSmallestCoordinates(BoundingBox bbox, (uint, uint) origin)
     {
-        var a = (0, 0);
-        var b = (20, 100);
+        Assert.Equal(origin, bbox.Origin);
     }
 
     [Theory]
@@ -23,11 +37,41 @@ public class BoundingBoxTests
     [InlineData(33, 33, 33, 33, 1)]
     [InlineData(5, 2, 25, 2, 21)]
     // TODO Add test that checks for very large areas, challenging max int values. Area might need to be a long, considering zoom level 19 has a maximum of 200+ billion tile area.
-    public void Area(uint ax, uint ay, uint bx, uint by, int area)
+    public void Area(uint ax, uint ay, uint bx, uint by, int expectedArea)
     {
         var bbox = new BoundingBox((ax, ay), (bx, by));
 
-        Assert.Equal(area, bbox.Area);
+        Assert.Equal(expectedArea, bbox.Area);
+    }
+
+    [Theory]
+    [InlineData(0, 0, 1, 1, 2)]
+    [InlineData(1, 1, 0, 0, 2)]
+    [InlineData(0, 0, 2, 2, 3)]
+    [InlineData(0, 0, 0, 0, 1)]
+    [InlineData(33, 33, 33, 33, 1)]
+    [InlineData(5, 2, 25, 2, 21)]
+    [InlineData(2, 5, 2, 25, 1)]
+    public void Width(uint ax, uint ay, uint bx, uint by, uint expectedWidth)
+    {
+        var bbox = new BoundingBox((ax, ay), (bx, by));
+
+        Assert.Equal(expectedWidth, bbox.Width);
+    }
+    
+    [Theory]
+    [InlineData(0, 0, 1, 1, 2)]
+    [InlineData(1, 1, 0, 0, 2)]
+    [InlineData(0, 0, 2, 2, 3)]
+    [InlineData(0, 0, 0, 0, 1)]
+    [InlineData(33, 33, 33, 33, 1)]
+    [InlineData(5, 2, 25, 2, 1)]
+    [InlineData(2, 5, 2, 25, 21)]
+    public void Height(uint ax, uint ay, uint bx, uint by, uint expectedHeight)
+    {
+        var bbox = new BoundingBox((ax, ay), (bx, by));
+
+        Assert.Equal(expectedHeight, bbox.Height);
     }
 
     [Theory]
@@ -128,9 +172,9 @@ public class BoundingBoxTests
     [Fact]
     public void EqualityOperatorHasSameFunctionalityAsEquals()
     {
-        var bbox1 = (BoundingBox) EqualityData.First()[0];
-        var bbox2 = (BoundingBox) EqualityData.First()[1];
-        
+        var bbox1 = (BoundingBox)EqualityData.First()[0];
+        var bbox2 = (BoundingBox)EqualityData.First()[1];
+
         // == is expected to give the same result as .Equals()
         Assert.Equal(bbox1.Equals(bbox2), bbox1 == bbox2);
     }
@@ -138,36 +182,36 @@ public class BoundingBoxTests
     [Fact]
     public void EqualityOperatorSymmetry()
     {
-        var bbox1 = (BoundingBox) EqualityData.First()[0];
-        var bbox2 = (BoundingBox) EqualityData.First()[1];
-        
+        var bbox1 = (BoundingBox)EqualityData.First()[0];
+        var bbox2 = (BoundingBox)EqualityData.First()[1];
+
         Assert.Equal(bbox1 == bbox2, bbox2 == bbox1);
-    } 
+    }
 
     [Fact]
     public void InequalityOperatorSymmetry()
     {
-        var bbox1 = (BoundingBox) EqualityData.First()[0];
-        var bbox2 = (BoundingBox) EqualityData.First()[1];
-        
+        var bbox1 = (BoundingBox)EqualityData.First()[0];
+        var bbox2 = (BoundingBox)EqualityData.First()[1];
+
         Assert.Equal(bbox1 != bbox2, bbox2 != bbox1);
-    } 
+    }
 
     [Fact]
     public void EqualsSymmetry()
     {
-        var bbox1 = (BoundingBox) EqualityData.First()[0];
-        var bbox2 = (BoundingBox) EqualityData.First()[1];
-        
+        var bbox1 = (BoundingBox)EqualityData.First()[0];
+        var bbox2 = (BoundingBox)EqualityData.First()[1];
+
         Assert.Equal(bbox1.Equals(bbox2), bbox2.Equals(bbox1));
     }
-    
+
     [Fact]
     public void InequalityOperatorOppositeOfEquals()
     {
-        var bbox1 = (BoundingBox) EqualityData.First()[0];
-        var bbox2 = (BoundingBox) EqualityData.First()[1];
-        
+        var bbox1 = (BoundingBox)EqualityData.First()[0];
+        var bbox2 = (BoundingBox)EqualityData.First()[1];
+
         // != is expected to give the opposite result of a call to .Equals()
         Assert.Equal(!bbox1.Equals(bbox2), bbox1 != bbox2);
     }
