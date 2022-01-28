@@ -1,4 +1,6 @@
-﻿namespace mapsnap;
+﻿using System;
+
+namespace mapsnap;
 
 public class TileServer
 {
@@ -13,6 +15,11 @@ public class TileServer
 
         // Add a / to the end of the url if user failed to initialize it.
         // TODO validate this more carefully, preferably the whole url (integrate with future testing suite?)
+        if (!IsValidUrl(ServerUrl))
+        {
+            throw new ArgumentException($"Constructor called with invalid url: {ServerUrl}");
+        }
+
         if (!ServerUrl.EndsWith('/'))
         {
             ServerUrl = $"{serverUrl}/";
@@ -38,6 +45,11 @@ public class TileServer
         get => mirrorCount;
         init
         {
+            if (value > 26)
+            {
+                throw new ArgumentException($"Mirror count cannot be higher than there are letters in the alphabet. Was {mirrorCount}");
+            }
+            
             mirrorCount = value;
 
             var split = ServerUrl.Split("//");
@@ -95,5 +107,11 @@ public class TileServer
     public bool ValidateZoom(int zoom)
     {
         return zoom >= MinZoom && zoom <= MaxZoom;
+    }
+
+    private static bool IsValidUrl(string url)
+    {
+        return Uri.TryCreate(url, UriKind.Absolute, out var uriResult) &&
+               (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
     }
 }

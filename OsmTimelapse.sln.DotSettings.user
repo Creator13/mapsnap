@@ -3,4 +3,14 @@
   &lt;Assembly Path="C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.0\ref\net6.0\Microsoft.CSharp.dll" /&gt;&#xD;
   &lt;Assembly Path="C:\Users\cvanb\.nuget\packages\system.commandline\2.0.0-beta1.21308.1\lib\netstandard2.0\System.CommandLine.dll" /&gt;&#xD;
   &lt;Assembly Path="C:\Program Files\dotnet\shared\Microsoft.NETCore.App\6.0.0\System.Private.CoreLib.dll" /&gt;&#xD;
-&lt;/AssemblyExplorer&gt;</s:String></wpf:ResourceDictionary>
+&lt;/AssemblyExplorer&gt;</s:String>
+	<s:String x:Key="/Default/Environment/Highlighting/HighlightingSourceSnapshotLocation/@EntryValue">C:\Users\cvanb\AppData\Local\JetBrains\Rider2021.3\resharper-host\temp\Rider\vAny\CoverageData\_OsmTimelapse.953606\Snapshot\snapshot.utdcvr</s:String>
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=43c1ed83_002D4ac4_002D4032_002D98f9_002Da9bfe676e6df/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="DefaultTileServerUpToDate" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+  &lt;TestAncestor&gt;&#xD;
+    &lt;TestId&gt;xUnit::D20112F1-F80D-437D-9043-0AF5B49EA4A3::net6.0::mapsnapTests.DefaultTileServerTests.DefaultTileServerUpToDate&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;xUnit::D20112F1-F80D-437D-9043-0AF5B49EA4A3::net6.0::mapsnapTests.TileServerTests.CorrectMirrorUrl&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;xUnit::D20112F1-F80D-437D-9043-0AF5B49EA4A3::net6.0::mapsnapTests.TileServerTests.MirrorCountLimitedToAlphabet&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;xUnit::D20112F1-F80D-437D-9043-0AF5B49EA4A3::net6.0::mapsnapTests.TileServerTests.HasMirrorsCorrect&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;xUnit::D20112F1-F80D-437D-9043-0AF5B49EA4A3::net6.0::mapsnapTests.TileServerTests&lt;/TestId&gt;&#xD;
+  &lt;/TestAncestor&gt;&#xD;
+&lt;/SessionState&gt;</s:String></wpf:ResourceDictionary>
