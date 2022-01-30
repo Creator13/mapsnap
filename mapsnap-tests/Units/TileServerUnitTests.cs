@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using mapsnap;
 using Xunit;
 
-namespace mapsnapTests.Units;
+namespace mapsnapTests.UnitTests;
 
 public class TileServerUnitTests
 {
