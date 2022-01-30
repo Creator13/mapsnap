@@ -3,7 +3,7 @@ using System.Linq;
 using mapsnap;
 using Xunit;
 
-namespace mapsnapTests;
+namespace mapsnapTests.Units;
 
 public class BoundingBoxTests
 {
