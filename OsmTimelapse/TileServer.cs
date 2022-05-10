@@ -57,7 +57,7 @@ public class TileServer
         }
     }
 
-    public string MirrorUrl { get; private init; }
+    private string MirrorUrl { get; init; }
 
     public bool HasMirrors => MirrorCount > 0;
 
@@ -93,7 +93,7 @@ public class TileServer
         return GetTileUrl(x, y, zoom);
     }
 
-    public bool ValidateAreaSize(int area, int zoom)
+    public bool IsValidAreaSize(int area, int zoom)
     {
         // As per the usage policy of the default tile server (tile.openstreetmap.org), "downloading areas of over 250 tiles at zoom 13 or
         // higher is prohibited," citing unfair server load. Prevent this scenario from happening by validating that the downloaded area is
@@ -104,7 +104,7 @@ public class TileServer
         return zoom < UnlimitedAreaMaxZoom || area <= MaxArea;
     }
 
-    public bool ValidateZoom(int zoom)
+    public bool IsValidZoomLevel(int zoom)
     {
         return zoom >= MinZoom && zoom <= MaxZoom;
     }
