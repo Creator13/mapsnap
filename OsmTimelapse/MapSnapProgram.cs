@@ -1,11 +1,16 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ConsoleTools;
 using mapsnap.Projects;
 using Microsoft.Extensions.DependencyInjection;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -20,6 +25,11 @@ public static class MapSnapProgram
 
     public static async Task<int> Main(string[] args)
     {
+        // GifColors();
+        // return 0; 
+        
+        return await GifCommandHandler(null);
+
         var services = new ServiceCollection().AddHttpClient();
         services.AddHttpClient<ITileDownloaderHttpClient, TileDownloaderHttpClient>();
         ServiceProvider = services.BuildServiceProvider();
@@ -134,7 +144,7 @@ public static class MapSnapProgram
         return 0;
     }
 
-    private static async Task<int> SnapCommandHandler(string project)
+    private static int LoadProjectContext(string project = null)
     {
         ProjectContext projectCtx;
         bool result;
@@ -173,6 +183,20 @@ public static class MapSnapProgram
 
         ProjectContext = projectCtx;
 
+        return 0;
+    }
+
+    private static async Task<int> SnapCommandHandler(string project)
+    {
+        if (ProjectContext == null)
+        {
+            var result = LoadProjectContext(project);
+            if (result != 0)
+            {
+                return result;
+            }
+        }
+
         var box = ProjectContext.Area;
 
         var validation = ValidateProjectContextBeforeCommand(ProjectContext);
@@ -196,6 +220,56 @@ public static class MapSnapProgram
         await image.SaveAsync(name, encoder);
 
         Console.WriteLine($"Saved snapshot as {name}!");
+
+        return 0;
+    }
+
+    private static async Task<int> GifCommandHandler(string project)
+    {
+        if (ProjectContext == null)
+        {
+            var result = LoadProjectContext(project);
+            if (result != 0)
+            {
+                return result;
+            }
+        }
+
+        var regex = ProjectContext.OutputFilenamePolicy switch {
+            ProjectContext.FilenamePolicy.Index => @"[\s\S]*" + ProjectContext.Name + @"\d+.(?:jpg|png)",
+            ProjectContext.FilenamePolicy.Date => @"[\s\S]*" + ProjectContext.Name + @" \d{4}-\d{2}-\d{2} \d{2}_\d{2}_\d{2}.(?:jpg|png)",
+            _ => "(?!)" // regex matches nothing, but this is in theory unreachable unless someone fucks with enums.
+        };
+        
+        var files = Directory.EnumerateFiles(Environment.CurrentDirectory)
+                             .Where(file => Regex.IsMatch(file, regex))
+                             .ToList();
+
+        if (files.Count == 0)
+        {
+            Console.WriteLine("No snapshots found in current project. Please capture a few snapshots and try again later.");
+            return 1;
+        }
+
+        if (files.Count == 1)
+        {
+            // TODO might prompt user to take a snapshot now, or might include that as a command parameter.
+            Console.WriteLine("Only 1 snapshot found in current project. Please capture one or more snapshots and try again.");
+            return 1;
+        }
+
+        Console.Write($"Found {files.Count} snapshots in this project. Creating GIF: ");
+        var progressBar = new ProgressBar(files.Count + 1);
+
+        var width = (int) ProjectContext.Area.Width * Tiles.TILE_SIZE;
+        var height = (int) ProjectContext.Area.Height * Tiles.TILE_SIZE;
+        
+        var outputGif = MakeGif(width, height, files, ref progressBar);
+        progressBar.Dispose();
+        
+        Console.WriteLine("Saving...");
+        await outputGif.SaveAsGifAsync("outputGif.gif");
+        Console.WriteLine("Done.");
 
         return 0;
     }
@@ -239,11 +313,41 @@ public static class MapSnapProgram
         var newImage = new Image<Rgba32>(width, height);
         for (var j = 0; j < tiles.Length; j++)
         {
-            var jCopy = j;
+            var jCopy = j; 
             newImage.Mutate(o =>
                 o.DrawImage(tiles[jCopy], new Point(jCopy % tileCountX * Tiles.TILE_SIZE, jCopy / tileCountX * Tiles.TILE_SIZE), 1f));
         }
 
         return newImage;
+    }
+
+    private static Image<Rgba32> MakeGif(int width, int height, IEnumerable<string> sourceFilePaths, ref ProgressBar progressBar, int frameDelay = 50)
+    {
+        Image<Rgba32> gif = new(width, height, Color.Magenta);
+        gif.Metadata.GetGifMetadata().RepeatCount = 0;
+
+        var count = 0;
+        foreach (var filePath in sourceFilePaths)
+        {
+            using var frame = Image.Load<Rgba32>(filePath);
+
+            frame.Frames.RootFrame.Metadata.GetGifMetadata().FrameDelay = frameDelay;
+
+            gif.Frames.AddFrame(frame.Frames.RootFrame);
+            
+            progressBar.Report(++count);
+        }
+
+        gif.Frames.RemoveFrame(0);
+        
+        gif.Frames[^1].Metadata.GetGifMetadata().FrameDelay = frameDelay * 2;
+        gif.Frames.RootFrame.Metadata.GetGifMetadata().FrameDelay = frameDelay * 2;
+        
+        return gif;
+    }
+
+    private static IEnumerator<Image<Rgba32>> GetNextLoadedFrame()
+    {
+        return null;
     }
 }
