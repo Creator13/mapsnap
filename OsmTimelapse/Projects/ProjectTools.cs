@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using cvanbattum.Utils;
+using mapsnap.Utils;
 
 namespace mapsnap.Projects;
 
@@ -11,14 +11,32 @@ public static class ProjectTools
 {
     public enum ProjectExistenceMatch
     {
+        /**
+         * No mapsnap.json file was found in the current working directory, nor was a directory with the project name found.
+         */
         NoMatch,
+        /**
+         * A folder with the name of this project was found in the current working directory, but it was completely empty.
+         */
         MatchingFolderEmpty,
+        /**
+         * A folder with the name of this project was found in the current working directory, and it is not empty.
+         */
         MatchingFolderNotEmpty,
+        /**
+         * A valid mapsnap.json file was found in the current working directory, but the name recorded in the json did not match the provided project name.
+         */
         MatchingFile,
+        /**
+         * An invalid mapsnap.json file was found in the current working directory.
+         */
         MatchingFileInvalid,
+        /**
+         * A valid mapsnap.json project that matches the provided project name was found in the current working directory.
+         */
         MatchingFileAndName
     }
-
+    
     public const string PROJECT_FILE_NAME = "mapsnap.json";
 
     private static readonly JsonSerializerOptions serializerOptions = new() {

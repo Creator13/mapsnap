@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using ConsoleTools;
+using mapsnap.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -32,6 +33,9 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
         httpClient = client;
         httpClient.DefaultRequestHeaders.UserAgent.Add(
             new ProductInfoHeaderValue("Mapsnap", $"v{Assembly.GetExecutingAssembly().GetName().Version}"));
+        httpClient.DefaultRequestHeaders.CacheControl = new CacheControlHeaderValue { NoCache = true, MaxAge = TimeSpan.Zero };
+        httpClient.DefaultRequestHeaders.Host = "tile.openstreetmap.org";
+        httpClient.DefaultRequestHeaders.Pragma.Add(new NameValueHeaderValue("no-cache"));
     }
 
     public long BytesDownloaded { get; private set; }
@@ -89,6 +93,12 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
 
                 var bytes = await response.Content.ReadAsByteArrayAsync();
 
+                // Console.WriteLine(response.Headers);
+                // if (response.Headers.Age > TimeSpan.Zero || response.Headers.GetValues("x-cache").Contains("HIT"))
+                // {
+                //     Console.WriteLine($"Tile ({x}, {y}, z{zoom}) was served from proxy cache and may not be entirely up to date! Tile age was: {response.Headers.Age:c}.");
+                // }
+
                 stopwatch.Stop();
                 DownloadTime += stopwatch.ElapsedMilliseconds;
 
@@ -114,7 +124,6 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
         var result = await Task.WhenAll(tasks);
 
         progressBar.Dispose();
-        Console.WriteLine("Done.");
 
         return result;
     }
@@ -131,18 +140,13 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
         var tiles = await client.DownloadTiles(server, box, zoom, server.ParallelLimit);
         stopwatch.Stop();
 
-        var formattedTime = stopwatch.ElapsedMilliseconds < 1000
-            ? $"{stopwatch.ElapsedMilliseconds:#,0}ms"
-            : $"{stopwatch.ElapsedMilliseconds / 1000d:#,0.000}s";
+        var totalSize = StringUtils.FormatKB(client.BytesDownloaded);
+        var totalTime = StringUtils.FormatElapsedTime(stopwatch.ElapsedMilliseconds);
+        var avgSize = StringUtils.FormatKB(client.BytesDownloaded / box.Area);
+        var avgTime = client.DownloadTime / (double)box.Area;
+        Console.WriteLine($"Downloaded {box.Area} tiles ({totalSize}) in {totalTime} (average size {avgSize}, average time {avgTime:#,0}ms)");
 
-        Console.WriteLine(
-            $"Downloaded {box.Area} tiles ({FormatKB(client.BytesDownloaded)}) in {formattedTime} (average size {FormatKB(client.BytesDownloaded / box.Area)}, average time {client.DownloadTime / (double)box.Area:#,0}ms)");
         return tiles;
-    }
-
-    private static string FormatKB(long bytes)
-    {
-        return $"{bytes / 1024f:#,0.0}kB";
     }
 
     private static IEnumerable<((uint x, uint y), int i)> CreateTileData(BoundingBox box)

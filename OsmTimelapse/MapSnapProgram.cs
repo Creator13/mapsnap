@@ -2,15 +2,16 @@
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ConsoleTools;
 using mapsnap.Projects;
+using mapsnap.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -25,11 +26,6 @@ public static class MapSnapProgram
 
     public static async Task<int> Main(string[] args)
     {
-        // GifColors();
-        // return 0; 
-        
-        return await GifCommandHandler(null);
-
         var services = new ServiceCollection().AddHttpClient();
         services.AddHttpClient<ITileDownloaderHttpClient, TileDownloaderHttpClient>();
         ServiceProvider = services.BuildServiceProvider();
@@ -72,6 +68,10 @@ public static class MapSnapProgram
         snapCommnand.AddAlias("s");
         snapCommnand.Handler = CommandHandler.Create(SnapCommandHandler);
         rootCommand.Add(snapCommnand);
+
+        var gifCommand = new Command("gif");
+        gifCommand.Handler = CommandHandler.Create(GifCommandHandler);
+        rootCommand.Add(gifCommand);
 
         return await rootCommand.InvokeAsync(args);
     }
@@ -202,11 +202,11 @@ public static class MapSnapProgram
         var validation = ValidateProjectContextBeforeCommand(ProjectContext);
         if (validation != 0) return validation;
 
-        Console.WriteLine(box.ToString());
+        Console.WriteLine(string.Concat(box.ToString().Replace("\n", "\n    ")));
         Console.WriteLine($"Final image size: {box.Width * 256}x{box.Height * 256}px ({box.Area * 256L * 256L / 1_000_000.0:#,0.0}MP)");
 
         var tiles = await TileDownloaderHttpClient.DownloadTiles(TileServer, box, ProjectContext.Zoom);
-
+        
         Console.WriteLine("Saving image (this may take a while if you're snapping a large area)...");
         using var image = MakeImage((int)box.Width, (int)box.Height, tiles);
 
@@ -220,6 +220,9 @@ public static class MapSnapProgram
         await image.SaveAsync(name, encoder);
 
         Console.WriteLine($"Saved snapshot as {name}!");
+        Console.WriteLine("\nNot seeing your changes show up? It might take a few minutes for the changes to appear on the rendered tiles.\n" +
+                          "    More info: https://github.com/Creator13/mapsnap/wiki/Why-don%27t-I-see-my-changes-on-a-map-snapshot%3F");
+        Console.WriteLine($"\n{StringUtils.ATTRIBUTION_TEXT}");
 
         return 0;
     }
@@ -259,17 +262,24 @@ public static class MapSnapProgram
         }
 
         Console.Write($"Found {files.Count} snapshots in this project. Creating GIF: ");
+
+        var filename = "outputGif.gif";
+
         var progressBar = new ProgressBar(files.Count + 1);
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
 
         var width = (int) ProjectContext.Area.Width * Tiles.TILE_SIZE;
         var height = (int) ProjectContext.Area.Height * Tiles.TILE_SIZE;
-        
         var outputGif = MakeGif(width, height, files, ref progressBar);
+        
+        stopwatch.Stop();
         progressBar.Dispose();
         
-        Console.WriteLine("Saving...");
-        await outputGif.SaveAsGifAsync("outputGif.gif");
-        Console.WriteLine("Done.");
+        Console.WriteLine($"took {StringUtils.FormatElapsedTime(stopwatch.ElapsedMilliseconds)}.");
+        Console.WriteLine($"Saving file {filename}...");
+        await outputGif.SaveAsGifAsync(filename);
+        Console.WriteLine($"\n{StringUtils.ATTRIBUTION_TEXT}");
 
         return 0;
     }
