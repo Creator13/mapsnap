@@ -1,5 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace mapsnap.Projects;
 
@@ -10,15 +14,24 @@ public record ProjectContext
 
     public enum FileType { Png, Jpg }
 
-    [JsonConstructor]
-    public ProjectContext(string name, BoundingBox area, int zoom, FilenamePolicy outputFilenamePolicy, FileType outputFileType)
-    {
-        Name = name;
-        Area = area;
-        Zoom = zoom;
-        OutputFilenamePolicy = outputFilenamePolicy;
-        OutputFileType = outputFileType;
-    }
+    internal int Version { get; init; } = ProjectSaveData.CURRENT_VERSION;
+    public string Name { get; init; } = "";
+    public BoundingBox Area { get; init; }
+    public int Zoom { get; init; }
+    public FilenamePolicy OutputFilenamePolicy { get; init; } = FilenamePolicy.Date;
+    public FileType OutputFileType { get; init; } = FileType.Png;
+
+    // [JsonConstructor]
+    // public ProjectContext(string name, BoundingBox area, int zoom, FilenamePolicy outputFilenamePolicy, FileType outputFileType)
+    // {
+    //     Name = name;
+    //     Area = area;
+    //     Zoom = zoom;
+    //     OutputFilenamePolicy = outputFilenamePolicy;
+    //     OutputFileType = outputFileType;
+    // }
+
+    internal ProjectContext() { }
 
     public ProjectContext(Coordinates coordA, Coordinates coordB, int zoom)
     {
@@ -31,13 +44,7 @@ public record ProjectContext
 
     public ProjectContext(string coordAStr, string coordBStr, int zoom) : this(new Coordinates(coordAStr), new Coordinates(coordBStr), zoom) { }
 
-    public string Name { get; init; } = "";
-    public BoundingBox Area { get; init; }
-    public int Zoom { get; init; }
-    public FilenamePolicy OutputFilenamePolicy { get; init; } = FilenamePolicy.Date;
-    public FileType OutputFileType { get; init; } = FileType.Png;
-
-    public string GetNextFilename()
+    public string GetNextImageName()
     {
         IFilenameFormatter formatter = OutputFilenamePolicy switch {
             FilenamePolicy.Index => new IndexFilenameFormatter(),
@@ -45,14 +52,26 @@ public record ProjectContext
             _ => throw new ArgumentOutOfRangeException()
         };
 
-        return formatter.Format(Name, OutputFileType).AddExtension(OutputFileType);
+        return formatter.Format(Name, OutputFileType);
     }
-}
 
-internal static class StringExtensions
-{
-    public static string AddExtension(this string filename, ProjectContext.FileType type)
+    public string GetNextGifName()
     {
-        return $"{filename}.{type.ToString().ToLower()}";
+        return new IndexFilenameFormatter().Format(Name, "gif");
     }
+
+    public List<string> GetImageFilePaths()
+    {
+        var regex = OutputFilenamePolicy switch {
+            FilenamePolicy.Index => @"[\s\S]*" + Name + @"\d+.(?:jpg|png)",
+            FilenamePolicy.Date => @"[\s\S]*" + Name + @" \d{4}-\d{2}-\d{2} \d{2}_\d{2}_\d{2}.(?:jpg|png)",
+            _ => "(?!)" // regex matches nothing, but this is in theory unreachable unless someone fucks with enums.
+        };
+
+        return Directory.EnumerateFiles(Environment.CurrentDirectory)
+                        .Where(file => Regex.IsMatch(file, regex))
+                        .ToList();
+    }
+
+    public static bool IsValidProjectName(string name) => Regex.IsMatch(name, "[a-zA-Z0-9-_]+");
 }

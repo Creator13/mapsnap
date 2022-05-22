@@ -15,6 +15,12 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace mapsnap;
 
+// TODO this class needs some serious refactoring:
+// - Why are there two methods called `DownloadTiles()` that do entirely different things?
+// - CreateTileData doesn't seem to need to return "i", could save some memory
+// - Tile data gets converted into tasks and all the downloading logic happens in the delegate of this .Select() call... Makes no sense at all. 
+// - Maybe this class should do minimal logging?
+
 public interface ITileDownloaderHttpClient
 {
     long BytesDownloaded { get; }

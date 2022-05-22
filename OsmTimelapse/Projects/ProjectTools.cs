@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -6,6 +7,41 @@ using System.Text.Json.Serialization;
 using mapsnap.Utils;
 
 namespace mapsnap.Projects;
+
+/**
+ * Intermediate class for converting JSON to ProjectContext, with added logic for project file version interoperability.
+ */
+internal class ProjectSaveData
+{
+    public const int CURRENT_VERSION = 2;
+
+    public int? Version { get; set; }
+    public string Name { get; set; } = "";
+    public BoundingBox Area { get; set; }
+    public int Zoom { get; set; }
+    public ProjectContext.FilenamePolicy OutputFilenamePolicy { get; set; } = ProjectContext.FilenamePolicy.Date;
+    public ProjectContext.FileType OutputFileType { get; set; } = ProjectContext.FileType.Png;
+
+    public static implicit operator ProjectSaveData(ProjectContext ctx) =>
+        new() {
+            Version = ctx.Version,
+            Name = ctx.Name,
+            Area = ctx.Area,
+            Zoom = ctx.Zoom,
+            OutputFilenamePolicy = ctx.OutputFilenamePolicy,
+            OutputFileType = ctx.OutputFileType,
+        };
+
+    public static explicit operator ProjectContext(ProjectSaveData saveData) =>
+        new() {
+            Version = saveData.Version ?? 1,
+            Name = saveData.Name,
+            Area = saveData.Area,
+            Zoom = saveData.Zoom,
+            OutputFilenamePolicy = saveData.OutputFilenamePolicy,
+            OutputFileType = saveData.OutputFileType,
+        };
+}
 
 public static class ProjectTools
 {
@@ -15,28 +51,33 @@ public static class ProjectTools
          * No mapsnap.json file was found in the current working directory, nor was a directory with the project name found.
          */
         NoMatch,
+
         /**
          * A folder with the name of this project was found in the current working directory, but it was completely empty.
          */
         MatchingFolderEmpty,
+
         /**
          * A folder with the name of this project was found in the current working directory, and it is not empty.
          */
         MatchingFolderNotEmpty,
+
         /**
          * A valid mapsnap.json file was found in the current working directory, but the name recorded in the json did not match the provided project name.
          */
         MatchingFile,
+
         /**
          * An invalid mapsnap.json file was found in the current working directory.
          */
         MatchingFileInvalid,
+
         /**
          * A valid mapsnap.json project that matches the provided project name was found in the current working directory.
          */
         MatchingFileAndName
     }
-    
+
     public const string PROJECT_FILE_NAME = "mapsnap.json";
 
     private static readonly JsonSerializerOptions serializerOptions = new() {
@@ -53,9 +94,9 @@ public static class ProjectTools
         return File.Exists($@"{PROJECT_FILE_NAME}");
     }
 
-    public static bool HasProject(string name)
+    public static bool InProjectDirectory(string projectName)
     {
-        return ProjectExists(name) == ProjectExistenceMatch.MatchingFileAndName;
+        return ProjectExists(projectName) == ProjectExistenceMatch.MatchingFileAndName;
     }
 
     public static ProjectExistenceMatch ProjectExists(string projectName)
@@ -92,12 +133,12 @@ public static class ProjectTools
 
     public static void SaveProject(ProjectContext project)
     {
-        var path = CreateProjectFilePath(project.Name);
+        var path = ConcatProjectFilePath(project.Name);
         try
         {
             Directory.CreateDirectory(project.Name);
             using var fs = File.Create(path);
-            JsonSerializer.Serialize(fs, project, serializerOptions);
+            JsonSerializer.Serialize(fs, (ProjectSaveData)project, serializerOptions);
 
             Console.WriteLine($"Successfully created project \"{project.Name}\" in folder {project.Name}/");
         }
@@ -121,13 +162,14 @@ public static class ProjectTools
         try
         {
             var jsonBytes = new ReadOnlySpan<byte>(File.ReadAllBytes(path));
-            project = JsonSerializer.Deserialize<ProjectContext>(jsonBytes, serializerOptions);
+            var data = JsonSerializer.Deserialize<ProjectSaveData>(jsonBytes, serializerOptions)!;
+            project = (ProjectContext)data;
             return true;
         }
         catch (Exception e) when (e is NotSupportedException or JsonException)
         {
             Console.WriteLine(e);
-            project = null;
+            project = null!;
             return false;
         }
     }
@@ -137,7 +179,7 @@ public static class ProjectTools
         return LoadProject(PROJECT_FILE_NAME, out project);
     }
 
-    private static string CreateProjectFilePath(string projectName)
+    private static string ConcatProjectFilePath(string projectName)
     {
         return $@"{projectName}/{PROJECT_FILE_NAME}";
     }

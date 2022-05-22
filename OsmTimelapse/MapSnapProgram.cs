@@ -63,15 +63,28 @@ public static class MapSnapProgram
         var snapCommnand = new Command("snap") {
             new Option<string>(
                 new[] { "--project", "-p" },
-                "Specify which project to work in relative to the current working directory")
+                "Specify which project to work in relative to the current working directory.")
         };
         snapCommnand.AddAlias("s");
         snapCommnand.Handler = CommandHandler.Create(SnapCommandHandler);
         rootCommand.Add(snapCommnand);
 
-        var gifCommand = new Command("gif");
+        var gifCommand = new Command("gif") {
+            new Option<string>(
+                new[] { "--project", "-p" },
+                "Specify which project to work in relative to the current working directory.")
+        };
         gifCommand.Handler = CommandHandler.Create(GifCommandHandler);
         rootCommand.Add(gifCommand);
+
+        var reportCommand = new Command("report") {
+            new Argument<string>("project", () => ".") {
+                Description = "Specify which project to work in relative to the current working directory."
+            },
+        };
+        reportCommand.AddAlias("r");
+        reportCommand.Handler = CommandHandler.Create(ReportCommandHandler);
+        rootCommand.Add(reportCommand);
 
         return await rootCommand.InvokeAsync(args);
     }
@@ -79,6 +92,14 @@ public static class MapSnapProgram
     private static int InitCommandHandler(string name, string coordA, string coordB, int zoom,
         ProjectContext.FileType fileType, ProjectContext.FilenamePolicy nameFormat)
     {
+        // Sanitize name
+        name = name.Trim();
+        if (!ProjectContext.IsValidProjectName(name))
+        {
+            Console.Error.WriteLine("Project name may only be a connected string of  upper- and lower case letters, digits, hyphens and underscores");
+            return 1;
+        }
+
         // Check if the coordinates are valid
         if (!(ValidateCoordinate(coordA) && ValidateCoordinate(coordB))) return 1;
 
@@ -150,9 +171,9 @@ public static class MapSnapProgram
         bool result;
 
         // If a project name is provided in the command, try to find it.
-        if (!string.IsNullOrEmpty(project))
+        if (!string.IsNullOrEmpty(project) && project != ".")
         {
-            if (!ProjectTools.HasProject(project))
+            if (!ProjectTools.InProjectDirectory(project))
             {
                 Console.Error.WriteLine($"No project named {project} found!");
                 return 1;
@@ -206,20 +227,22 @@ public static class MapSnapProgram
         Console.WriteLine($"Final image size: {box.Width * 256}x{box.Height * 256}px ({box.Area * 256L * 256L / 1_000_000.0:#,0.0}MP)");
 
         var tiles = await TileDownloaderHttpClient.DownloadTiles(TileServer, box, ProjectContext.Zoom);
-        
+
         Console.WriteLine("Saving image (this may take a while if you're snapping a large area)...");
         using var image = MakeImage((int)box.Width, (int)box.Height, tiles);
+
+        // TODO add check if new image is the same as the previous image.
 
         var encoder = new PngEncoder {
             CompressionLevel = PngCompressionLevel.DefaultCompression,
             BitDepth = PngBitDepth.Bit8
         };
 
-        var name = ProjectContext != null ? ProjectContext.GetNextFilename() : "output.png";
+        var name = ProjectContext != null ? ProjectContext.GetNextImageName() : "output.png";
 
         await image.SaveAsync(name, encoder);
 
-        Console.WriteLine($"Saved snapshot as {name}!");
+        Console.WriteLine($"Saved snapshot as {Environment.CurrentDirectory + name}!");
         Console.WriteLine("\nNot seeing your changes show up? It might take a few minutes for the changes to appear on the rendered tiles.\n" +
                           "    More info: https://github.com/Creator13/mapsnap/wiki/Why-don%27t-I-see-my-changes-on-a-map-snapshot%3F");
         Console.WriteLine($"\n{StringUtils.ATTRIBUTION_TEXT}");
@@ -238,15 +261,7 @@ public static class MapSnapProgram
             }
         }
 
-        var regex = ProjectContext.OutputFilenamePolicy switch {
-            ProjectContext.FilenamePolicy.Index => @"[\s\S]*" + ProjectContext.Name + @"\d+.(?:jpg|png)",
-            ProjectContext.FilenamePolicy.Date => @"[\s\S]*" + ProjectContext.Name + @" \d{4}-\d{2}-\d{2} \d{2}_\d{2}_\d{2}.(?:jpg|png)",
-            _ => "(?!)" // regex matches nothing, but this is in theory unreachable unless someone fucks with enums.
-        };
-        
-        var files = Directory.EnumerateFiles(Environment.CurrentDirectory)
-                             .Where(file => Regex.IsMatch(file, regex))
-                             .ToList();
+        var files = ProjectContext.GetImageFilePaths();
 
         if (files.Count == 0)
         {
@@ -263,23 +278,45 @@ public static class MapSnapProgram
 
         Console.Write($"Found {files.Count} snapshots in this project. Creating GIF: ");
 
-        var filename = "outputGif.gif";
+        var filename = ProjectContext.GetNextGifName();
 
         var progressBar = new ProgressBar(files.Count + 1);
         var stopwatch = new Stopwatch();
         stopwatch.Start();
 
-        var width = (int) ProjectContext.Area.Width * Tiles.TILE_SIZE;
-        var height = (int) ProjectContext.Area.Height * Tiles.TILE_SIZE;
+        var width = (int)ProjectContext.Area.Width * Tiles.TILE_SIZE;
+        var height = (int)ProjectContext.Area.Height * Tiles.TILE_SIZE;
         var outputGif = MakeGif(width, height, files, ref progressBar);
-        
+
         stopwatch.Stop();
         progressBar.Dispose();
-        
+
         Console.WriteLine($"took {StringUtils.FormatElapsedTime(stopwatch.ElapsedMilliseconds)}.");
         Console.WriteLine($"Saving file {filename}...");
         await outputGif.SaveAsGifAsync(filename);
         Console.WriteLine($"\n{StringUtils.ATTRIBUTION_TEXT}");
+
+        return 0;
+    }
+
+    private static int ReportCommandHandler(string project)
+    {
+        var result = LoadProjectContext(project);
+        if (result != 0)
+        {
+            return result;
+        }
+
+        var box = ProjectContext.Area;
+        var files = ProjectContext.GetImageFilePaths();
+
+        Console.WriteLine($"Project: {ProjectContext.Name}" +
+                          $"\nSave version v{ProjectContext.Version}" +
+                          $"\n{box.Area} tiles at zoom level {ProjectContext.Zoom}" +
+                          $"\n{string.Concat(box.ToString().Replace("\n", "\n    "))}" +
+                          $"\nImages are saved as {ProjectContext.OutputFileType.ToString().ToUpper()}s, using a {(ProjectContext.OutputFilenamePolicy == ProjectContext.FilenamePolicy.Date ? "dated" : "indexed")} naming scheme." +
+                          $"\nProject folder contains {(files.Count == 0 ? "no" : files.Count)} valid image{(files.Count == 1 ? "" : "s")}."
+        );
 
         return 0;
     }
@@ -323,7 +360,7 @@ public static class MapSnapProgram
         var newImage = new Image<Rgba32>(width, height);
         for (var j = 0; j < tiles.Length; j++)
         {
-            var jCopy = j; 
+            var jCopy = j;
             newImage.Mutate(o =>
                 o.DrawImage(tiles[jCopy], new Point(jCopy % tileCountX * Tiles.TILE_SIZE, jCopy / tileCountX * Tiles.TILE_SIZE), 1f));
         }
@@ -331,7 +368,8 @@ public static class MapSnapProgram
         return newImage;
     }
 
-    private static Image<Rgba32> MakeGif(int width, int height, IEnumerable<string> sourceFilePaths, ref ProgressBar progressBar, int frameDelay = 50)
+    private static Image<Rgba32> MakeGif(int width, int height, IEnumerable<string> sourceFilePaths, ref ProgressBar progressBar,
+        int frameDelay = 50)
     {
         Image<Rgba32> gif = new(width, height, Color.Magenta);
         gif.Metadata.GetGifMetadata().RepeatCount = 0;
@@ -344,20 +382,21 @@ public static class MapSnapProgram
             frame.Frames.RootFrame.Metadata.GetGifMetadata().FrameDelay = frameDelay;
 
             gif.Frames.AddFrame(frame.Frames.RootFrame);
-            
+
             progressBar.Report(++count);
         }
 
         gif.Frames.RemoveFrame(0);
-        
+
         gif.Frames[^1].Metadata.GetGifMetadata().FrameDelay = frameDelay * 2;
         gif.Frames.RootFrame.Metadata.GetGifMetadata().FrameDelay = frameDelay * 2;
-        
+
         return gif;
     }
 
     private static IEnumerator<Image<Rgba32>> GetNextLoadedFrame()
     {
+        // TODO implement asynchronous loading for image files. (although this doesn't seem to be a bottleneck, at least with small projects)
         return null;
     }
 }
