@@ -16,14 +16,14 @@ internal class DateFilenameFormatter : IFilenameFormatter
 {
     public string Format(string baseName, ProjectContext.FileType type)
     {
-        return Format(baseName, type.PathString());
+        return Format(baseName, type.FileExtension());
     }
 
     public string Format(string baseName, string extension)
     {
         var date = DateTime.Now;
         var dateString = $"{date:s}".Replace(':', '_').Replace('T', ' ');
-        return $"{baseName}{(!string.IsNullOrEmpty(baseName) ? " " : "")}{dateString}";
+        return $"{baseName}{(!string.IsNullOrEmpty(baseName) ? " " : "")}{dateString}.{extension}";
     }
 }
 
@@ -34,7 +34,7 @@ internal class IndexFilenameFormatter : IFilenameFormatter
     
     public string Format(string baseName, ProjectContext.FileType type)
     {
-        return Format(baseName, type.PathString());
+        return Format(baseName, type.FileExtension());
     }
 
     public string Format(string baseName, string extension)
@@ -57,7 +57,10 @@ internal class IndexFilenameFormatter : IFilenameFormatter
 
 internal static class FileTypeExtensions
 {
-    public static string PathString(this ProjectContext.FileType fileType)
+    /**
+     * Returns the file extension for this file type.
+     */
+    public static string FileExtension(this ProjectContext.FileType fileType)
     {
         return fileType.ToString().ToLower();
     }

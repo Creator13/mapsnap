@@ -26,10 +26,6 @@ public static class MapSnapProgram
 
     public static async Task<int> Main(string[] args)
     {
-        var services = new ServiceCollection().AddHttpClient();
-        services.AddHttpClient<ITileDownloaderHttpClient, TileDownloaderHttpClient>();
-        ServiceProvider = services.BuildServiceProvider();
-
         var rootCommand = new RootCommand();
 
         var initCommand = new Command("init") {
@@ -72,7 +68,19 @@ public static class MapSnapProgram
         var gifCommand = new Command("gif") {
             new Option<string>(
                 new[] { "--project", "-p" },
-                "Specify which project to work in relative to the current working directory.")
+                "Specify which project to work in relative to the current working directory."),
+            new Option<bool>(
+                new[] { "--noLoop", "-l" },
+                () => false,
+                "Turn off gif looping."),
+            new Option<int>(
+                new[] { "--delay", "-d" },
+                () => 50,
+                "The time each frame is shown in hundredths of seconds (a value of 100 will show frames for 1 second)."),
+            new Option<bool>(
+                new[] { "--uniformDelay" },
+                () => false,
+                "With a uniform delay, the first and last frames are shown as long as the rest. This may make it harder to see what's happening.")
         };
         gifCommand.Handler = CommandHandler.Create(GifCommandHandler);
         rootCommand.Add(gifCommand);
@@ -96,7 +104,8 @@ public static class MapSnapProgram
         name = name.Trim();
         if (!ProjectContext.IsValidProjectName(name))
         {
-            Console.Error.WriteLine("Project name may only be a connected string of  upper- and lower case letters, digits, hyphens and underscores");
+            Console.Error.WriteLine(
+                "Project name may only be a connected string of  upper- and lower case letters, digits, hyphens and underscores");
             return 1;
         }
 
@@ -209,6 +218,10 @@ public static class MapSnapProgram
 
     private static async Task<int> SnapCommandHandler(string project)
     {
+        var services = new ServiceCollection().AddHttpClient();
+        services.AddHttpClient<ITileDownloaderHttpClient, TileDownloaderHttpClient>();
+        ServiceProvider = services.BuildServiceProvider();
+        
         if (ProjectContext == null)
         {
             var result = LoadProjectContext(project);
@@ -242,7 +255,7 @@ public static class MapSnapProgram
 
         await image.SaveAsync(name, encoder);
 
-        Console.WriteLine($"Saved snapshot as {Environment.CurrentDirectory + name}!");
+        Console.WriteLine($"Saved snapshot as {Environment.CurrentDirectory}{Path.DirectorySeparatorChar}{name}!");
         Console.WriteLine("\nNot seeing your changes show up? It might take a few minutes for the changes to appear on the rendered tiles.\n" +
                           "    More info: https://github.com/Creator13/mapsnap/wiki/Why-don%27t-I-see-my-changes-on-a-map-snapshot%3F");
         Console.WriteLine($"\n{StringUtils.ATTRIBUTION_TEXT}");
@@ -250,8 +263,10 @@ public static class MapSnapProgram
         return 0;
     }
 
-    private static async Task<int> GifCommandHandler(string project)
+    private static async Task<int> GifCommandHandler(string project, int delay, bool uniformDelay, bool noLoop)
     {
+        // TODO make a GifSettings class to hold (and save to project!) delay, uniformDelay and noLoop (and maybe name). 
+
         if (ProjectContext == null)
         {
             var result = LoadProjectContext(project);
@@ -284,15 +299,26 @@ public static class MapSnapProgram
         var stopwatch = new Stopwatch();
         stopwatch.Start();
 
+        // Create gif in memory
         var width = (int)ProjectContext.Area.Width * Tiles.TILE_SIZE;
         var height = (int)ProjectContext.Area.Height * Tiles.TILE_SIZE;
-        var outputGif = MakeGif(width, height, files, ref progressBar);
+        var outputGif = MakeGif(width, height, files, ref progressBar, frameDelay: delay);
 
         stopwatch.Stop();
         progressBar.Dispose();
 
+        // Set settings
+        if (!uniformDelay)
+        {
+            outputGif.Frames[^1].Metadata.GetGifMetadata().FrameDelay = delay * 2;
+            outputGif.Frames.RootFrame.Metadata.GetGifMetadata().FrameDelay = delay * 2;
+        }
+
+        outputGif.Metadata.GetGifMetadata().RepeatCount = noLoop ? (ushort)1 : (ushort)0;
+
+        // Save gif to disk
         Console.WriteLine($"took {StringUtils.FormatElapsedTime(stopwatch.ElapsedMilliseconds)}.");
-        Console.WriteLine($"Saving file {filename}...");
+        Console.WriteLine($"Saving as {filename}...");
         await outputGif.SaveAsGifAsync(filename);
         Console.WriteLine($"\n{StringUtils.ATTRIBUTION_TEXT}");
 
@@ -372,12 +398,23 @@ public static class MapSnapProgram
         int frameDelay = 50)
     {
         Image<Rgba32> gif = new(width, height, Color.Magenta);
-        gif.Metadata.GetGifMetadata().RepeatCount = 0;
+
+        sourceFilePaths = sourceFilePaths.OrderBy(s => s, StringComparer.InvariantCultureIgnoreCase);
 
         var count = 0;
         foreach (var filePath in sourceFilePaths)
         {
             using var frame = Image.Load<Rgba32>(filePath);
+
+            if (frame.Width != gif.Width || frame.Height != gif.Height)
+            {
+                // Frames with different sizes than the original are skipped.
+                // This can happen for all kinds of reasons, like the user renaming files or manually editing the project file.
+                // TODO notify user that frames have been skipped
+
+                progressBar.Report(++count);
+                continue;
+            }
 
             frame.Frames.RootFrame.Metadata.GetGifMetadata().FrameDelay = frameDelay;
 
@@ -387,9 +424,6 @@ public static class MapSnapProgram
         }
 
         gif.Frames.RemoveFrame(0);
-
-        gif.Frames[^1].Metadata.GetGifMetadata().FrameDelay = frameDelay * 2;
-        gif.Frames.RootFrame.Metadata.GetGifMetadata().FrameDelay = frameDelay * 2;
 
         return gif;
     }
