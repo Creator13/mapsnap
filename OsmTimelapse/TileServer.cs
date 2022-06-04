@@ -1,4 +1,6 @@
-﻿namespace mapsnap;
+﻿using System;
+
+namespace mapsnap;
 
 public class TileServer
 {
@@ -13,6 +15,11 @@ public class TileServer
 
         // Add a / to the end of the url if user failed to initialize it.
         // TODO validate this more carefully, preferably the whole url (integrate with future testing suite?)
+        if (!IsValidUrl(ServerUrl))
+        {
+            throw new ArgumentException($"Constructor called with invalid url: {ServerUrl}");
+        }
+
         if (!ServerUrl.EndsWith('/'))
         {
             ServerUrl = $"{serverUrl}/";
@@ -38,6 +45,11 @@ public class TileServer
         get => mirrorCount;
         init
         {
+            if (value > 26)
+            {
+                throw new ArgumentException($"Mirror count cannot be higher than there are letters in the alphabet. Was {mirrorCount}");
+            }
+            
             mirrorCount = value;
 
             var split = ServerUrl.Split("//");
@@ -45,7 +57,7 @@ public class TileServer
         }
     }
 
-    public string MirrorUrl { get; private init; }
+    private string MirrorUrl { get; init; }
 
     public bool HasMirrors => MirrorCount > 0;
 
@@ -81,7 +93,7 @@ public class TileServer
         return GetTileUrl(x, y, zoom);
     }
 
-    public bool ValidateAreaSize(int area, int zoom)
+    public bool IsValidAreaSize(int area, int zoom)
     {
         // As per the usage policy of the default tile server (tile.openstreetmap.org), "downloading areas of over 250 tiles at zoom 13 or
         // higher is prohibited," citing unfair server load. Prevent this scenario from happening by validating that the downloaded area is
@@ -92,8 +104,14 @@ public class TileServer
         return zoom < UnlimitedAreaMaxZoom || area <= MaxArea;
     }
 
-    public bool ValidateZoom(int zoom)
+    public bool IsValidZoomLevel(int zoom)
     {
         return zoom >= MinZoom && zoom <= MaxZoom;
+    }
+
+    private static bool IsValidUrl(string url)
+    {
+        return Uri.TryCreate(url, UriKind.Absolute, out var uriResult) &&
+               (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
     }
 }

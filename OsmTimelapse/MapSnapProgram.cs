@@ -363,14 +363,14 @@ public static class MapSnapProgram
 
     private static int ValidateProjectContextBeforeCommand(ProjectContext ctx)
     {
-        if (!TileServer.ValidateZoom(ctx.Zoom))
+        if (!TileServer.IsValidZoomLevel(ctx.Zoom))
         {
             Console.Error.WriteLine(
                 $"Tile server {TileServer.ServerUrl} does not support requested zoom level of {ctx.Zoom}. Must be between {TileServer.MinZoom} and {TileServer.MaxZoom} (inclusive)");
             return 1;
         }
 
-        if (!TileServer.ValidateAreaSize(ctx.Area.Area, ctx.Zoom))
+        if (!TileServer.IsValidAreaSize(ctx.Area.Area, ctx.Zoom))
         {
             Console.Error.WriteLine(
                 $"This area has a size of {ctx.Area.Area}. The OSM server usage policy disallows downloading areas of over {TileServer.MaxArea} at zoom level {TileServer.UnlimitedAreaMaxZoom} or higher. Please choose a smaller area.");
