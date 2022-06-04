@@ -21,16 +21,6 @@ public record ProjectContext
     public FilenamePolicy OutputFilenamePolicy { get; init; } = FilenamePolicy.Date;
     public FileType OutputFileType { get; init; } = FileType.Png;
 
-    // [JsonConstructor]
-    // public ProjectContext(string name, BoundingBox area, int zoom, FilenamePolicy outputFilenamePolicy, FileType outputFileType)
-    // {
-    //     Name = name;
-    //     Area = area;
-    //     Zoom = zoom;
-    //     OutputFilenamePolicy = outputFilenamePolicy;
-    //     OutputFileType = outputFileType;
-    // }
-
     internal ProjectContext() { }
 
     public ProjectContext(Coordinates coordA, Coordinates coordB, int zoom)

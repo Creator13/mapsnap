@@ -10,9 +10,13 @@ namespace mapsnap.Projects;
 
 /**
  * Intermediate class for converting JSON to ProjectContext, with added logic for project file version interoperability.
+ * TODO: merge this with context using a custom serialization method, and/or refactor this to ProjectSettings
  */
 internal class ProjectSaveData
 {
+    // Version history:
+    // 1: Added "name", "area: {origin: {item1, item2}, width, height}", "zoom", "output_filename_policy", "output_file_type"
+    // 2: Added "version"
     public const int CURRENT_VERSION = 2;
 
     public int? Version { get; set; }
@@ -131,16 +135,25 @@ public static class ProjectTools
         return ProjectExistenceMatch.NoMatch;
     }
 
-    public static void SaveProject(ProjectContext project)
+    public static bool SaveProject(ProjectContext project)
     {
         var path = ConcatProjectFilePath(project.Name);
-        try
+        if (!Directory.Exists(project.Name))
         {
             Directory.CreateDirectory(project.Name);
-            using var fs = File.Create(path);
-            JsonSerializer.Serialize(fs, (ProjectSaveData)project, serializerOptions);
+        }
+        
+        return SaveProject((ProjectSaveData)project, path);
+    }
 
-            Console.WriteLine($"Successfully created project \"{project.Name}\" in folder {project.Name}/");
+    private static bool SaveProject(ProjectSaveData project, string path)
+    {
+        try
+        {
+            using var fs = File.Create(path);
+            JsonSerializer.Serialize(fs, project, serializerOptions);
+
+            return true;
         }
         catch (Exception e) when (e is NotSupportedException or PathTooLongException)
         {
@@ -155,6 +168,8 @@ public static class ProjectTools
             Console.Error.WriteLine($"An error occured while creating project at {path}:");
             throw;
         }
+
+        return false;
     }
 
     public static bool LoadProject(string path, out ProjectContext project)
@@ -163,7 +178,17 @@ public static class ProjectTools
         {
             var jsonBytes = new ReadOnlySpan<byte>(File.ReadAllBytes(path));
             var data = JsonSerializer.Deserialize<ProjectSaveData>(jsonBytes, serializerOptions)!;
+            
             project = (ProjectContext)data;
+
+            // TODO this is an ugly side effect for this function, should be moved or refactored...
+            if (project.Version != ProjectSaveData.CURRENT_VERSION)
+            {
+                Console.WriteLine("Updating project file to current version...");
+                Console.WriteLine($"Versiobn {data.Version} {project.Version}");
+                SaveProject((ProjectSaveData) project, path);
+            }
+            
             return true;
         }
         catch (Exception e) when (e is NotSupportedException or JsonException)

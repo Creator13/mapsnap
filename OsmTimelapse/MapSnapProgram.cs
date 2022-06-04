@@ -169,7 +169,10 @@ public static class MapSnapProgram
             }
         }
 
-        ProjectTools.SaveProject(ProjectContext);
+        if (ProjectTools.SaveProject(ProjectContext))
+        {
+            Console.WriteLine($"Successfully created project \"{name}\" in folder {name}/");
+        }
 
         return 0;
     }
