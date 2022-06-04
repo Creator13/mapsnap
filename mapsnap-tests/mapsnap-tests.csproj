@@ -22,7 +22,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\OsmTimelapse\OsmTimelapse.csproj" />
+      <ProjectReference Include="..\mapsnap\mapsnap.csproj" />
     </ItemGroup>
 
 </Project>
