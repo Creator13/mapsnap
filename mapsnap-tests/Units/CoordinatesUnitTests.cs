@@ -87,12 +87,12 @@ public class CoordinatesUnitTests
         // Implicitly testing that no exception is thrown;
         _ = new Coordinates(coordString);
     }
-    
+
     [Theory]
     [MemberData(nameof(InvalidCoordinates))]
     public void CoordinateObjectConstructionThrowsErrorsOnInvalidStrings(string coordString)
     {
-        Assert.Throws<ArgumentException>(() => new Coordinates(coordString));
+        Assert.Throws<FormatException>(() => new Coordinates(coordString));
     }
 
     [Theory]
@@ -106,7 +106,7 @@ public class CoordinatesUnitTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new Coordinates(lat, lon));
     }
-    
+
     [Theory]
     [InlineData(42, 170)]
     [InlineData(42.235, 170.3462)]
@@ -134,7 +134,7 @@ public class CoordinatesUnitTests
     public void ParsingConvertsToCorrectCoordinates(string input, double expectedLat, double expectedLong)
     {
         var coords = new Coordinates(input);
-        
+
         Assert.Equal(expectedLat, coords.latitude);
         Assert.Equal(expectedLong, coords.longitude);
     }
@@ -146,17 +146,17 @@ public class CoordinatesUnitTests
     public void LiteralConstructorStoresValuesUnaltered(double lat, double lon)
     {
         var coords = new Coordinates(lat, lon);
-        
+
         Assert.Equal(lat, coords.latitude);
         Assert.Equal(lon, coords.longitude);
     }
-    
+
     [Theory]
     [InlineData(42.3545, 174.23, "42.3545° 174.23°")]
     [InlineData(-42.3545, -174.23, "-42.3545° -174.23°")]
     [InlineData(42.354576, 174.230023, "42.35458° 174.23002°")]
     [InlineData(-42.3545, -174.230025, "-42.3545° -174.23003°")]
-    [InlineData(0, 0, "0.0° 0.0°")]    
+    [InlineData(0, 0, "0.0° 0.0°")]
     public void StringConversion(double lat, double lon, string expected)
     {
         var coords = new Coordinates(lat, lon);
