@@ -101,7 +101,7 @@ public class TileServer
         // Creating requests like this might result in 400 Bad Request errors.
         // Source (Jan. 2022): https://operations.osmfoundation.org/policies/tiles/#bulk-downloading
 
-        return zoom < UnlimitedAreaMaxZoom || area <= MaxArea;
+        return zoom >= 0 && area >= 0 && (area <= MaxArea || (area > MaxArea && zoom < UnlimitedAreaMaxZoom));
     }
 
     public bool IsValidZoomLevel(int zoom)
