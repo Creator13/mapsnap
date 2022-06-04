@@ -174,14 +174,13 @@ public class TileServerUnitTests
     [Theory]
     [InlineData(23, 5, 15)]
     [InlineData(0, 0, 4)]
-    [InlineData(55345, 234223, 5)]
     public void TileUrlOverloads(uint x, uint y, int zoom)
     {
         // Overloads should return the same result as the base method, not necessarily a correct one
-        // TODO ^^ This is not true for back-and-forth conversion between tiles and coordinates, because coordinates have to be valid!
+        // FIXME ^^ This is not true for back-and-forth conversion between tiles and coordinates, because coordinates have to be valid!
 
         const string url = "https://mock.tiles.org/";
-        var coords = new Coordinates(Tiles.TileYToLat((int)y, zoom), Tiles.TileXToLong((int)x, zoom));
+        // var coords = new Coordinates(Tiles.TileYToLat((int)y, zoom), Tiles.TileXToLong((int)x, zoom));
 
         var server = new TileServer(
             url, 1, 19,
@@ -193,12 +192,9 @@ public class TileServerUnitTests
         // Overload GetTileUrl((uint x, uint y) tile, int zoom)
         Assert.Equal(baseMethodResult, server.GetTileUrl((x, y), zoom));
         // Overload GetTileUrl(Coordinates coords, int zoom)
-        // TODO Add separate test (same data) for back-and-forth coordinate conversion as this works differently.
+        // FIXME Add separate test (same data) for back-and-forth coordinate conversion as this works differently.
         // FIXME Assert.Equal(baseMethodResult, server.GetTileUrl(coords, zoom));
     }
-
-    // [Fact]
-    // public void
 
     [Theory]
     [InlineData(23, 5, 15)]

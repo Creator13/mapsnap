@@ -12,12 +12,22 @@ public static class Tiles
 
     public static uint LongToTileX(double lon, int z)
     {
-        return (uint)Math.Floor((lon + 180.0) / 360.0 * (1 << z));
+        return (uint) Math.Floor(LongToTileXUnrounded(lon, z));
     }
 
     public static uint LatToTileY(double lat, int z)
     {
-        return (uint)Math.Floor((1 - Math.Log(Math.Tan(ToRadians(lat)) + 1 / Math.Cos(ToRadians(lat))) / Math.PI) / 2 * (1 << z));
+        return (uint)Math.Floor(LatToTileYUnrounded(lat, z));
+    }
+    
+    private static double LongToTileXUnrounded(double lon, int z)
+    {
+        return (lon + 180.0) / 360.0 * (1 << z);
+    }
+
+    private static double LatToTileYUnrounded(double lat, int z)
+    {
+        return (1 - Math.Log(Math.Tan(ToRadians(lat)) + 1 / Math.Cos(ToRadians(lat))) / Math.PI) / 2 * (1 << z);
     }
 
     public static double TileXToLong(int x, int z)
@@ -29,6 +39,17 @@ public static class Tiles
     {
         var n = Math.PI - 2.0 * Math.PI * y / (1 << z);
         return 180.0 / Math.PI * Math.Atan(0.5 * (Math.Exp(n) - Math.Exp(-n)));
+    }
+
+    public static (int, int) CoordinatesToTilePixel(Coordinates coord, int zoom)
+    {
+        var tileXUnrounded = LongToTileXUnrounded(coord.longitude, zoom);
+        var tileYUnrounded = LatToTileYUnrounded(coord.latitude, zoom);
+        
+        var dx = (int) Math.Floor((tileXUnrounded - Math.Floor(tileXUnrounded)) * 256);
+        var dy = (int) Math.Floor((tileYUnrounded - Math.Floor(tileYUnrounded)) * 256);
+        
+        return (dx, dy);
     }
 
     private static double ToRadians(double num)
