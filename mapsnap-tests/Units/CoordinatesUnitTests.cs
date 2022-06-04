@@ -150,4 +150,16 @@ public class CoordinatesUnitTests
         Assert.Equal(lat, coords.latitude);
         Assert.Equal(lon, coords.longitude);
     }
+    
+    [Theory]
+    [InlineData(42.3545, 174.23, "42.3545° 174.23°")]
+    [InlineData(-42.3545, -174.23, "-42.3545° -174.23°")]
+    [InlineData(42.354576, 174.230023, "42.35458° 174.23002°")]
+    [InlineData(-42.3545, -174.230025, "-42.3545° -174.23003°")]
+    [InlineData(0, 0, "0.0° 0.0°")]    
+    public void StringConversion(double lat, double lon, string expected)
+    {
+        var coords = new Coordinates(lat, lon);
+        Assert.Equal(coords.ToString(), expected);
+    }
 }
