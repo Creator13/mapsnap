@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using mapsnap;
 using Xunit;
@@ -34,8 +35,9 @@ public class BoundingBoxTests
     [InlineData(1, 1, 0, 0, 4)]
     [InlineData(0, 0, 2, 2, 9)]
     [InlineData(0, 0, 0, 0, 1)]
-    [InlineData(33, 33, 33, 33, 1)]
-    [InlineData(5, 2, 25, 2, 21)]
+    [InlineData(33, 33, 33, 33, 1)] // single tile
+    [InlineData(5, 2, 25, 2, 21)] // horizontal strip
+    [InlineData(2, 5, 2, 25, 21)] // vertical strip
     // TODO Add test that checks for very large areas, challenging max int values. Area might need to be a long, considering zoom level 19 has a maximum of 200+ billion tile area.
     public void Area(uint ax, uint ay, uint bx, uint by, int expectedArea)
     {
@@ -49,24 +51,24 @@ public class BoundingBoxTests
     [InlineData(1, 1, 0, 0, 2)]
     [InlineData(0, 0, 2, 2, 3)]
     [InlineData(0, 0, 0, 0, 1)]
-    [InlineData(33, 33, 33, 33, 1)]
-    [InlineData(5, 2, 25, 2, 21)]
-    [InlineData(2, 5, 2, 25, 1)]
+    [InlineData(33, 33, 33, 33, 1)] // single tile
+    [InlineData(5, 2, 25, 2, 21)] // horizontal strip
+    [InlineData(2, 5, 2, 25, 1)] // vertical strip
     public void Width(uint ax, uint ay, uint bx, uint by, uint expectedWidth)
     {
         var bbox = new BoundingBox((ax, ay), (bx, by));
 
         Assert.Equal(expectedWidth, bbox.Width);
     }
-    
+
     [Theory]
     [InlineData(0, 0, 1, 1, 2)]
     [InlineData(1, 1, 0, 0, 2)]
     [InlineData(0, 0, 2, 2, 3)]
     [InlineData(0, 0, 0, 0, 1)]
-    [InlineData(33, 33, 33, 33, 1)]
-    [InlineData(5, 2, 25, 2, 1)]
-    [InlineData(2, 5, 2, 25, 21)]
+    [InlineData(33, 33, 33, 33, 1)] // single tile
+    [InlineData(5, 2, 25, 2, 1)] // horizontal strip
+    [InlineData(2, 5, 2, 25, 21)] // vertical strip
     public void Height(uint ax, uint ay, uint bx, uint by, uint expectedHeight)
     {
         var bbox = new BoundingBox((ax, ay), (bx, by));
@@ -75,23 +77,44 @@ public class BoundingBoxTests
     }
 
     [Theory]
-    [InlineData(0, 0, 1, 1)]
-    [InlineData(1, 1, 0, 0)]
-    [InlineData(0, 0, 2, 2)]
-    [InlineData(5, 2, 25, 2)]
-    public void Corners(uint ax, uint ay, uint bx, uint by)
+    [InlineData(
+        0, 0, 1, 1,
+        0, 0, 1, 0,
+        0, 1, 1, 1)]
+    [InlineData(
+        1, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 1, 1, 1)]
+    [InlineData(
+        0, 0, 2, 2,
+        0, 0, 2, 0,
+        0, 2, 2, 2)]
+    [InlineData(
+        40, 30, 18, 36,
+        18, 30, 40, 30,
+        18, 36, 40, 36)]
+    [InlineData(
+        5, 2, 25, 2,
+        5, 2, 25, 2,
+        5, 2, 25, 2
+    )] // single height
+    [InlineData(
+        2, 5, 2, 25,
+        2, 5, 2, 5,
+        2, 25, 2, 25
+    )] // single width
+    public void Corners(
+        uint ax, uint ay, uint bx, uint by,
+        uint topLeftX, uint topLeftY, uint topRightX, uint topRightY,
+        uint bottomLeftX, uint bottomLeftY, uint bottomRightX, uint bottomRightY
+    )
     {
         var bbox = new BoundingBox((ax, ay), (bx, by));
 
-        var expectedTopLeft = (ax, ay);
-        var expectedTopRight = (bx, ay);
-        var expectedBottomLeft = (ax, by);
-        var expectedBottomRight = (bx, by);
-
-        Assert.Equal(expectedTopLeft, bbox.TopLeft);
-        Assert.Equal(expectedTopRight, bbox.TopRight);
-        Assert.Equal(expectedBottomLeft, bbox.BottomLeft);
-        Assert.Equal(expectedBottomRight, bbox.BottomRight);
+        Assert.Equal((topLeftX, topLeftY), bbox.TopLeft);
+        Assert.Equal((topRightX, topRightY), bbox.TopRight);
+        Assert.Equal((bottomLeftX, bottomLeftY), bbox.BottomLeft);
+        Assert.Equal((bottomRightX, bottomRightY), bbox.BottomRight);
     }
 
     [Theory]
@@ -101,6 +124,7 @@ public class BoundingBoxTests
     {
         var bbox = new BoundingBox((ax, ay), (bx, by));
 
+        // These boxes are expected to consist of only one tile, so every corner should have the same coordinates and the width/height should be 1
         Assert.Equal((expectedX, expectedY), bbox.TopLeft);
         Assert.Equal((expectedX, expectedY), bbox.TopRight);
         Assert.Equal((expectedX, expectedY), bbox.BottomRight);

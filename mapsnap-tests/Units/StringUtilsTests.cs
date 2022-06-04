@@ -1,4 +1,4 @@
-﻿using cvanbattum.Utils;
+﻿using mapsnap.Utils;
 using Xunit;
 
 namespace mapsnapTests.UnitTests;

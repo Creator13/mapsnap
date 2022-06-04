@@ -54,7 +54,7 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
         BytesDownloaded = 0;
         done = 0;
 
-        var tileData = CreateTileData(box);
+        var tileData = box.EnumerateTiles().Select((coords, i) => (coords, i)).ToArray();
 
         var semaphore = new SemaphoreSlim(requestLimit);
 
@@ -153,20 +153,5 @@ public class TileDownloaderHttpClient : ITileDownloaderHttpClient
         Console.WriteLine($"Downloaded {box.Area} tiles ({totalSize}) in {totalTime} (average size {avgSize}, average time {avgTime:#,0}ms)");
 
         return tiles;
-    }
-
-    private static IEnumerable<((uint x, uint y), int i)> CreateTileData(BoundingBox box)
-    {
-        var tileData = new ((uint x, uint y), int i)[box.Area];
-        var i = 0;
-        for (var y = box.Origin.y; y < box.Origin.y + box.Height; y++)
-        {
-            for (var x = box.Origin.x; x < box.Origin.x + box.Width; x++, i++)
-            {
-                tileData[i] = ((x, y), i);
-            }
-        }
-
-        return tileData;
     }
 }
