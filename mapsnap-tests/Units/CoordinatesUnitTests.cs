@@ -31,6 +31,7 @@ public class CoordinateTestStringGenerator : IEnumerable<object[]>
 public class CoordinatesUnitTests
 {
     private readonly ITestOutputHelper testOutputHelper;
+
     public CoordinatesUnitTests(ITestOutputHelper testOutputHelper)
     {
         this.testOutputHelper = testOutputHelper;
@@ -184,5 +185,31 @@ public class CoordinatesUnitTests
         var coords = new Coordinates(coordStr);
         testOutputHelper.WriteLine(TileServer.defaultTileServer.GetTileUrl(coords, zoom));
         Assert.Equal((pixelX, pixelY), Tiles.CoordinatesToTilePixel(coords, zoom));
-    } 
+    }
+
+    [Fact]
+    // FIXME Maybe this should be in a tile tests class? It doesn't exist atm.
+    public void TestPixelWidth()
+    {
+        const int pixelCount = 256;
+        const int sampleCount = 1000;
+
+        var counts = new int[pixelCount];
+        for (var i = 0; i < 180; i++)
+        {
+            for (var j = 0; j < sampleCount; j++)
+            {
+                var lon = i + j / (double)sampleCount;
+                var coords = new Coordinates(0.0, lon);
+                var (x, _) = Tiles.CoordinatesToTilePixel(coords, 1);
+                counts[x]++;
+            }
+        }
+
+        const double expectedSamplesPerPixel = 180 * sampleCount / (double)pixelCount;
+        Assert.True(counts.All(
+            count => count == (int)Math.Floor(expectedSamplesPerPixel)
+                     || count == (int)Math.Ceiling(expectedSamplesPerPixel)
+        ));
+    }
 }
