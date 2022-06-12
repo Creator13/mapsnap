@@ -41,7 +41,7 @@ public static class Tiles
         return 180.0 / Math.PI * Math.Atan(0.5 * (Math.Exp(n) - Math.Exp(-n)));
     }
 
-    public static (int, int) CoordinatesToTilePixel(Coordinates coord, int zoom)
+    public static CartesianCoordinates CoordinatesToTilePixel(Coordinates coord, int zoom)
     {
         var tileXUnrounded = LongToTileXUnrounded(coord.longitude, zoom);
         var tileYUnrounded = LatToTileYUnrounded(coord.latitude, zoom);

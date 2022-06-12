@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace mapsnap.Projects;
@@ -13,13 +12,14 @@ public record ProjectContext
     public enum FilenamePolicy { Index, Date }
 
     public enum FileType { Png, Jpg }
-
+    
     internal int Version { get; init; } = ProjectSaveData.CURRENT_VERSION;
     public string Name { get; init; } = "";
     public BoundingBox Area { get; init; }
     public int Zoom { get; init; }
     public FilenamePolicy OutputFilenamePolicy { get; init; } = FilenamePolicy.Date;
     public FileType OutputFileType { get; init; } = FileType.Png;
+    public PixelOffsets PixelOffsets { get; init; }
 
     internal ProjectContext() { }
 
@@ -28,6 +28,8 @@ public record ProjectContext
         (uint x, uint y) a = (Tiles.LongToTileX(coordA.longitude, zoom), Tiles.LatToTileY(coordA.latitude, zoom));
         (uint x, uint y) b = (Tiles.LongToTileX(coordB.longitude, zoom), Tiles.LatToTileY(coordB.latitude, zoom));
 
+        PixelOffsets = new PixelOffsets(coordA, coordB, zoom);
+        
         Area = new BoundingBox(a, b);
         Zoom = zoom;
     }

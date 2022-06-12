@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using mapsnap;
@@ -7,26 +6,6 @@ using Xunit;
 using Xunit.Abstractions;
 
 namespace mapsnapTests.UnitTests;
-
-public class CoordinateTestStringGenerator : IEnumerable<object[]>
-{
-    private readonly IEnumerable<string> separators;
-    private readonly IEnumerable<(string, string)> coordinatePairs;
-
-    public CoordinateTestStringGenerator(IEnumerable<string> separators, IEnumerable<(string, string)> coordinatePairs)
-    {
-        this.separators = separators;
-        this.coordinatePairs = coordinatePairs;
-    }
-
-    public IEnumerator<object[]> GetEnumerator() => (
-        from separator in separators
-        from coords in coordinatePairs
-        select new object[] { $"{coords.Item1}{separator}{coords.Item2}" }
-    ).GetEnumerator();
-
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-}
 
 public class CoordinatesUnitTests
 {
@@ -38,27 +17,39 @@ public class CoordinatesUnitTests
     }
 
     // TODO write tests that test exhaustively for any valid/invalid coordinate
-    public static CoordinateTestStringGenerator ValidCoordinates => new(new[] {
-            " ", "      ",
-            ",", ";", "/",
-            " ,", " ;", " /",
-            ", ", "; ", "/ ",
-            " , ", " ; ", " / ",
-        },
-        new[] {
-            ("+90.0", "-127.554334"),
-            ("45", "180"),
-            ("-90", "-180"),
-            ("-90.000", "-180.0000"),
-            ("67", "25.1234"),
-            ("57.432°", "25.1°"),
-            ("57.432°", "25.1"),
-            ("47.1231231", "179.99999999"),
-            (" 7.343", "17.343"),
-            ("7.343", "17.343 "),
-            (" 7.343", "17.343 "),
-            ("0", "0")
-        });
+    public static IEnumerator<object[]> ValidCoordinates
+    {
+        get
+        {
+            var separators = new[] {
+                " ", "      ",
+                ",", ";", "/",
+                " ,", " ;", " /",
+                ", ", "; ", "/ ",
+                " , ", " ; ", " / ",
+            };
+            var coordinatePairs = new[] {
+                ("+90.0", "-127.554334"),
+                ("45", "180"),
+                ("-90", "-180"),
+                ("-90.000", "-180.0000"),
+                ("67", "25.1234"),
+                ("57.432°", "25.1°"),
+                ("57.432°", "25.1"),
+                ("47.1231231", "179.99999999"),
+                (" 7.343", "17.343"),
+                ("7.343", "17.343 "),
+                (" 7.343", "17.343 "),
+                ("0", "0")
+            };
+
+            return (
+                from separator in separators
+                from coords in coordinatePairs
+                select new object[] { $"{coords.Item1}{separator}{coords.Item2}" }
+            ).GetEnumerator();
+        }
+    }
 
     [Theory]
     [MemberData(nameof(ValidCoordinates))]
@@ -184,7 +175,7 @@ public class CoordinatesUnitTests
     {
         var coords = new Coordinates(coordStr);
         testOutputHelper.WriteLine(TileServer.defaultTileServer.GetTileUrl(coords, zoom));
-        Assert.Equal((pixelX, pixelY), Tiles.CoordinatesToTilePixel(coords, zoom));
+        Assert.Equal((CartesianCoordinates)(pixelX, pixelY), Tiles.CoordinatesToTilePixel(coords, zoom));
     }
 
     [Fact]
@@ -207,9 +198,7 @@ public class CoordinatesUnitTests
         }
 
         const double expectedSamplesPerPixel = 180 * sampleCount / (double)pixelCount;
-        Assert.True(counts.All(
-            count => count == (int)Math.Floor(expectedSamplesPerPixel)
-                     || count == (int)Math.Ceiling(expectedSamplesPerPixel)
-        ));
+        Assert.All(counts, count =>
+            Assert.InRange(count, (int)Math.Floor(expectedSamplesPerPixel), (int)Math.Ceiling(expectedSamplesPerPixel)));
     }
 }
