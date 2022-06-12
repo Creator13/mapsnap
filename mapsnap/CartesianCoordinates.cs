@@ -20,7 +20,7 @@ public struct CartesianCoordinates
 
     public override bool Equals(object obj)
     {
-        return obj is CartesianCoordinates coords && coords.x == this.x && coords.y == this.y;
+        return obj is CartesianCoordinates coords && coords.x == x && coords.y == y;
     }
 
     public void Deconstruct(out int x, out int y)
@@ -28,7 +28,7 @@ public struct CartesianCoordinates
         x = this.x;
         y = this.y;
     }
-    
+
     public static implicit operator CartesianCoordinates((int, int) tuple)
     {
         return new CartesianCoordinates(tuple.Item1, tuple.Item2);

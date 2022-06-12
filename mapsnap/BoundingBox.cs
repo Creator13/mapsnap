@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 
@@ -27,7 +26,7 @@ public readonly struct BoundingBox
         var maxY = Math.Max(a.y, b.y);
 
         Origin = (minX, minY);
-        
+
         Width = maxX - minX + 1;
         Height = maxY - minY + 1;
     }

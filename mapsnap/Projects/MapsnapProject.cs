@@ -12,8 +12,7 @@ public record MapsnapProject
 
     public enum FileType { Png, Jpg }
 
-    internal readonly Coordinates coordsA;
-    internal readonly Coordinates coordsB;
+    internal readonly Coordinates coordsA, coordsB;
 
     internal int Version { get; init; } = ProjectTools.CURRENT_SAVE_VERSION;
     public string Name { get; init; } = "";
@@ -29,7 +28,7 @@ public record MapsnapProject
     {
         get
         {
-            var width = (int) Area.Width * Tiles.TILE_SIZE;
+            var width = (int)Area.Width * Tiles.TILE_SIZE;
             if (UsePixelPrecision)
             {
                 width -= PixelOffsets.left + PixelOffsets.right;
@@ -38,12 +37,12 @@ public record MapsnapProject
             return width;
         }
     }
-    
+
     public int ImageHeight
     {
         get
         {
-            var height = (int) Area.Height * Tiles.TILE_SIZE;
+            var height = (int)Area.Height * Tiles.TILE_SIZE;
             if (UsePixelPrecision)
             {
                 height -= PixelOffsets.top + PixelOffsets.bottom;
@@ -53,7 +52,12 @@ public record MapsnapProject
         }
     }
 
-    internal MapsnapProject() { }
+    internal MapsnapProject(BoundingBox bbox, int zoom)
+    {
+        Area = bbox;
+        coordsA = new Coordinates(Tiles.TileYToLat(bbox.TopLeft.y, zoom), Tiles.TileXToLong(bbox.TopLeft.x, zoom));
+        coordsB = new Coordinates(Tiles.TileYToLat(bbox.BottomRight.y + 1, zoom), Tiles.TileXToLong(bbox.BottomRight.x + 1, zoom));
+    }
 
     public MapsnapProject(Coordinates coordA, Coordinates coordB, int zoom)
     {
@@ -64,7 +68,7 @@ public record MapsnapProject
         (uint x, uint y) b = (Tiles.LongToTileX(coordsB.longitude, zoom), Tiles.LatToTileY(coordsB.latitude, zoom));
 
         PixelOffsets = new PixelOffsets(coordsA, coordsB, Zoom);
-        
+
         Area = new BoundingBox(a, b);
         Zoom = zoom;
     }
@@ -100,5 +104,8 @@ public record MapsnapProject
                         .ToList();
     }
 
-    public static bool IsValidProjectName(string name) => Regex.IsMatch(name, "[a-zA-Z0-9-_]+");
+    public static bool IsValidProjectName(string name)
+    {
+        return Regex.IsMatch(name, "[a-zA-Z0-9-_]+");
+    }
 }
