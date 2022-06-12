@@ -31,7 +31,7 @@ internal class IndexFilenameFormatter : IFilenameFormatter
 {
     // FIXME It would be nicer if this class was initialized with the current number, although that doesn't allow it to respond dynamically
     // (in the current context of a console application, dynamic isn't needed at all)
-    
+
     public string Format(string baseName, MapsnapProject.FileType type)
     {
         return Format(baseName, type.FileExtension());
@@ -50,7 +50,7 @@ internal class IndexFilenameFormatter : IFilenameFormatter
                            .First();
             number = int.Parse(Regex.Match(lastFile, $"{baseName}(\\d+).(?:jpg|png)").Groups[1].Value);
         }
-        
+
         return $"{baseName}{number + 1}.{extension}";
     }
 }

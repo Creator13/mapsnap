@@ -3,10 +3,9 @@
   <component name="LocationsWithSilentDeleteHolder">
     <option name="locations">
       <list>
-        <option value="$PROJECT_DIR$/OsmTimelapse/bin/Release/net6.0/publish/linux" />
-        <option value="$PROJECT_DIR$/OsmTimelapse/bin/Release/net6.0/publish/win64" />
-        <option value="$PROJECT_DIR$/OsmTimelapse/bin/Release/net6.0/publish/linux64" />
-        <option value="$PROJECT_DIR$/OsmTimelapse/bin/Release/net6.0/publish/mapsnap-linux64" />
+        <option value="$PROJECT_DIR$/mapsnap/bin/Release/net6.0/publish/mapsnap-linux64" />
+        <option value="$PROJECT_DIR$/mapsnap/bin/Release/net6.0/publish/mapsnap-osx64" />
+        <option value="$PROJECT_DIR$/mapsnap/bin/Release/net6.0/publish/mapsnap-win64" />
       </list>
     </option>
   </component>

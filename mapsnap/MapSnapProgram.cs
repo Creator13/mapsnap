@@ -51,7 +51,7 @@ public static class MapSnapProgram
             new Option<bool>(
                 new[] { "--pixel-perfect", "-P" },
                 () => true,
-                "Pixel perfect."),
+                "Pixel perfect.")
         };
         initCommand.AddAlias("i");
         initCommand.AddAlias("create");
@@ -91,7 +91,7 @@ public static class MapSnapProgram
         var reportCommand = new Command("report") {
             new Argument<string>("project", () => ".") {
                 Description = "Specify which project to work in relative to the current working directory."
-            },
+            }
         };
         reportCommand.AddAlias("r");
         reportCommand.Handler = CommandHandler.Create(ReportCommandHandler);
@@ -309,7 +309,7 @@ public static class MapSnapProgram
         stopwatch.Start();
 
         // Create gif in memory
-        var outputGif = MakeGif(ProjectContext.ImageWidth, ProjectContext.ImageHeight, files, ref progressBar, frameDelay: delay);
+        var outputGif = MakeGif(ProjectContext.ImageWidth, ProjectContext.ImageHeight, files, ref progressBar, delay);
 
         stopwatch.Stop();
         progressBar.Dispose();

@@ -5,7 +5,7 @@ namespace mapsnap;
 public class TileServer
 {
     public static readonly TileServer defaultTileServer =
-        new TileServer("https://tile.openstreetmap.org/", 1, 19, 250, 13, 2) {
+        new("https://tile.openstreetmap.org/", 1, 19, 250, 13, 2) {
             MirrorCount = 3
         };
 
@@ -49,7 +49,7 @@ public class TileServer
             {
                 throw new ArgumentException($"Mirror count cannot be higher than there are letters in the alphabet. Was {mirrorCount}");
             }
-            
+
             mirrorCount = value;
 
             var split = ServerUrl.Split("//");

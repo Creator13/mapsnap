@@ -175,7 +175,7 @@ public static class ProjectTools
                 [namingPolicy.ConvertName(nameof(MapsnapProject.Zoom))] = project.Zoom,
                 [namingPolicy.ConvertName(nameof(MapsnapProject.OutputFileType))] = namingPolicy.ConvertName(project.OutputFileType.ToString()),
                 [namingPolicy.ConvertName(nameof(MapsnapProject.OutputFilenamePolicy))] =
-                    namingPolicy.ConvertName(project.OutputFilenamePolicy.ToString()),
+                    namingPolicy.ConvertName(project.OutputFilenamePolicy.ToString())
             };
 
             if (project.Version <= 2)
@@ -239,14 +239,12 @@ public static class ProjectTools
             if (version <= 2)
             {
                 var area = root.GetProperty("area").Deserialize<BoundingBox>(serializerOptions);
-                project = new MapsnapProject {
+                project = new MapsnapProject(area, zoom) {
                     Version = version,
                     Name = name,
-                    Zoom = zoom,
                     OutputFileType = fileType,
                     OutputFilenamePolicy = filenamePolicy,
-                    Area = area,
-                    UsePixelPrecision = false,
+                    UsePixelPrecision = false
                 };
             }
             else // version >= 3 
