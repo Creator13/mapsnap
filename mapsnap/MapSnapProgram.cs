@@ -20,7 +20,7 @@ namespace mapsnap;
 public static class MapSnapProgram
 {
     public static ServiceProvider ServiceProvider { get; private set; }
-    private static ProjectContext ProjectContext { get; set; }
+    private static MapsnapProject ProjectContext { get; set; }
     private static TileServer TileServer => TileServer.defaultTileServer;
 
     public static async Task<int> Main(string[] args)
@@ -40,13 +40,13 @@ public static class MapSnapProgram
             new Argument<int>("zoom") {
                 Description = "The zoom level of the image you want to capture."
             },
-            new Option<ProjectContext.FileType>(
+            new Option<MapsnapProject.FileType>(
                 new[] { "--file-type", "-t" },
-                () => ProjectContext.FileType.Png,
+                () => MapsnapProject.FileType.Png,
                 "File type for output files."),
-            new Option<ProjectContext.FilenamePolicy>(
+            new Option<MapsnapProject.FilenamePolicy>(
                 new[] { "--name-format", "-n", "-f" },
-                () => ProjectContext.FilenamePolicy.Date,
+                () => MapsnapProject.FilenamePolicy.Date,
                 "How should the output files be named.")
         };
         initCommand.AddAlias("i");
@@ -97,11 +97,11 @@ public static class MapSnapProgram
     }
 
     private static int InitCommandHandler(string name, string coordA, string coordB, int zoom,
-        ProjectContext.FileType fileType, ProjectContext.FilenamePolicy nameFormat)
+        MapsnapProject.FileType fileType, MapsnapProject.FilenamePolicy nameFormat)
     {
         // Sanitize name
         name = name.Trim();
-        if (!ProjectContext.IsValidProjectName(name))
+        if (!MapsnapProject.IsValidProjectName(name))
         {
             Console.Error.WriteLine(
                 "Project name may only be a connected string of  upper- and lower case letters, digits, hyphens and underscores");
@@ -135,7 +135,7 @@ public static class MapSnapProgram
             }
         }
 
-        ProjectContext = new ProjectContext(coordA, coordB, zoom) {
+        ProjectContext = new MapsnapProject(coordA, coordB, zoom) {
             Name = name,
             OutputFileType = fileType,
             OutputFilenamePolicy = nameFormat
@@ -178,7 +178,7 @@ public static class MapSnapProgram
 
     private static int LoadProjectContext(string project = null)
     {
-        ProjectContext projectCtx;
+        MapsnapProject projectCtx;
         bool result;
 
         // If a project name is provided in the command, try to find it.
@@ -223,7 +223,7 @@ public static class MapSnapProgram
         var services = new ServiceCollection().AddHttpClient();
         services.AddHttpClient<ITileDownloaderHttpClient, TileDownloaderHttpClient>();
         ServiceProvider = services.BuildServiceProvider();
-        
+
         if (ProjectContext == null)
         {
             var result = LoadProjectContext(project);
@@ -336,13 +336,19 @@ public static class MapSnapProgram
         }
 
         var box = ProjectContext.Area;
+        var offsets = ProjectContext.PixelOffsets;
+        var width = box.Width * Tiles.TILE_SIZE;
+        var height = box.Height * Tiles.TILE_SIZE;
         var files = ProjectContext.GetImageFilePaths();
 
         Console.WriteLine($"Project: {ProjectContext.Name}" +
                           $"\nSave version v{ProjectContext.Version}" +
                           $"\n{box.Area} tiles at zoom level {ProjectContext.Zoom}" +
                           $"\n{string.Concat(box.ToString().Replace("\n", "\n    "))}" +
-                          $"\nImages are saved as {ProjectContext.OutputFileType.ToString().ToUpper()}s, using a {(ProjectContext.OutputFilenamePolicy == ProjectContext.FilenamePolicy.Date ? "dated" : "indexed")} naming scheme." +
+                          (ProjectContext.HasPixelPrecision
+                              ? $"\nFinal image size: {width - offsets.left - offsets.right}x{height - offsets.top - offsets.bottom}px exact, {width}x{height}px uncropped."
+                              : $"\nFinal image size: {width}x{height}px.") +
+                          $"\nImages are saved as {ProjectContext.OutputFileType.ToString().ToUpper()}s, using a {(ProjectContext.OutputFilenamePolicy == MapsnapProject.FilenamePolicy.Date ? "dated" : "indexed")} naming scheme." +
                           $"\nProject folder contains {(files.Count == 0 ? "no" : files.Count)} valid image{(files.Count == 1 ? "" : "s")}."
         );
 
@@ -360,7 +366,7 @@ public static class MapSnapProgram
         return true;
     }
 
-    private static int ValidateProjectContextBeforeCommand(ProjectContext ctx)
+    private static int ValidateProjectContextBeforeCommand(MapsnapProject ctx)
     {
         if (!TileServer.IsValidZoomLevel(ctx.Zoom))
         {

@@ -5,12 +5,14 @@ namespace mapsnap.Projects;
 [Serializable]
 public record PixelOffsets
 {
+    public static PixelOffsets Zero => new(0, 0, 0, 0);
+
     public int top, right, bottom, left;
 
     /**
      * Create offsets with specified x-y values.
      */
-    public PixelOffsets(int top = 0, int right = 0, int bottom = 0, int left = 0)
+    public PixelOffsets(int top, int right, int bottom, int left)
     {
         if (top < 0 || right < 0 ||
             bottom < 0 || left < 0)
@@ -34,9 +36,8 @@ public record PixelOffsets
     /**
      * Create offsets from coordinate pairs.
      */
-    public PixelOffsets(CartesianCoordinates topLeft, CartesianCoordinates bottomRight):
-        this(topLeft.y, Tiles.TILE_SIZE - bottomRight.x - 1, Tiles.TILE_SIZE - bottomRight.y - 1, topLeft.x)
-    { }
+    public PixelOffsets(CartesianCoordinates topLeft, CartesianCoordinates bottomRight) :
+        this(topLeft.y, Tiles.TILE_SIZE - bottomRight.x - 1, Tiles.TILE_SIZE - bottomRight.y - 1, topLeft.x) { }
 
     /**
      * Creates offsets from world coordinates. Coordinates a and b can be in arbitrary order.

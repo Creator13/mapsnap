@@ -6,35 +6,41 @@ using System.Text.RegularExpressions;
 
 namespace mapsnap.Projects;
 
-[Serializable]
-public record ProjectContext
+public record MapsnapProject
 {
     public enum FilenamePolicy { Index, Date }
 
     public enum FileType { Png, Jpg }
+
+    internal readonly Coordinates coordsA;
+    internal readonly Coordinates coordsB;
     
-    internal int Version { get; init; } = ProjectSaveData.CURRENT_VERSION;
+    internal int Version { get; init; } = ProjectTools.CURRENT_SAVE_VERSION;
     public string Name { get; init; } = "";
     public BoundingBox Area { get; init; }
     public int Zoom { get; init; }
     public FilenamePolicy OutputFilenamePolicy { get; init; } = FilenamePolicy.Date;
     public FileType OutputFileType { get; init; } = FileType.Png;
     public PixelOffsets PixelOffsets { get; init; }
+    public bool HasPixelPrecision => !PixelOffsets.Equals(PixelOffsets.Zero);
 
-    internal ProjectContext() { }
+    internal MapsnapProject() { }
 
-    public ProjectContext(Coordinates coordA, Coordinates coordB, int zoom)
+    public MapsnapProject(Coordinates coordA, Coordinates coordB, int zoom)
     {
-        (uint x, uint y) a = (Tiles.LongToTileX(coordA.longitude, zoom), Tiles.LatToTileY(coordA.latitude, zoom));
-        (uint x, uint y) b = (Tiles.LongToTileX(coordB.longitude, zoom), Tiles.LatToTileY(coordB.latitude, zoom));
+        coordsA = coordA;
+        coordsB = coordB;
+        
+        (uint x, uint y) a = (Tiles.LongToTileX(coordsA.longitude, zoom), Tiles.LatToTileY(coordsA.latitude, zoom));
+        (uint x, uint y) b = (Tiles.LongToTileX(coordsB.longitude, zoom), Tiles.LatToTileY(coordsB.latitude, zoom));
 
-        PixelOffsets = new PixelOffsets(coordA, coordB, zoom);
+        PixelOffsets = new PixelOffsets(coordsA, coordsB, zoom);
         
         Area = new BoundingBox(a, b);
         Zoom = zoom;
     }
 
-    public ProjectContext(string coordAStr, string coordBStr, int zoom) : this(new Coordinates(coordAStr), new Coordinates(coordBStr), zoom) { }
+    public MapsnapProject(string coordAStr, string coordBStr, int zoom) : this(new Coordinates(coordAStr), new Coordinates(coordBStr), zoom) { }
 
     public string GetNextImageName()
     {
