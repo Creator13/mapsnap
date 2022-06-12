@@ -47,7 +47,11 @@ public static class MapSnapProgram
             new Option<MapsnapProject.FilenamePolicy>(
                 new[] { "--name-format", "-n", "-f" },
                 () => MapsnapProject.FilenamePolicy.Date,
-                "How should the output files be named.")
+                "How should the output files be named."),
+            new Option<bool>(
+                new[] { "--pixel-perfect", "-P" },
+                () => true,
+                "Pixel perfect."),
         };
         initCommand.AddAlias("i");
         initCommand.AddAlias("create");
@@ -97,7 +101,7 @@ public static class MapSnapProgram
     }
 
     private static int InitCommandHandler(string name, string coordA, string coordB, int zoom,
-        MapsnapProject.FileType fileType, MapsnapProject.FilenamePolicy nameFormat)
+        MapsnapProject.FileType fileType, MapsnapProject.FilenamePolicy nameFormat, bool pixelPerfect)
     {
         // Sanitize name
         name = name.Trim();
@@ -138,7 +142,8 @@ public static class MapSnapProgram
         ProjectContext = new MapsnapProject(coordA, coordB, zoom) {
             Name = name,
             OutputFileType = fileType,
-            OutputFilenamePolicy = nameFormat
+            OutputFilenamePolicy = nameFormat,
+            UsePixelPrecision = pixelPerfect
         };
 
         var box = ProjectContext.Area;
@@ -244,9 +249,11 @@ public static class MapSnapProgram
         var tiles = await TileDownloaderHttpClient.DownloadTiles(TileServer, box, ProjectContext.Zoom);
 
         Console.WriteLine("Saving image (this may take a while if you're snapping a large area)...");
-        using var image = MakeImage((int)box.Width, (int)box.Height, tiles);
+        using var image = ProjectContext.UsePixelPrecision
+            ? MakeImage((int)box.Width, (int)box.Height, tiles, ProjectContext.PixelOffsets)
+            : MakeImage((int)box.Width, (int)box.Height, tiles);
 
-        // TODO add check if new image is the same as the previous image.
+        // TODO add check if new image is the same as the previous image, and skip if so.
 
         var encoder = new PngEncoder {
             CompressionLevel = PngCompressionLevel.DefaultCompression,
@@ -302,9 +309,7 @@ public static class MapSnapProgram
         stopwatch.Start();
 
         // Create gif in memory
-        var width = (int)ProjectContext.Area.Width * Tiles.TILE_SIZE;
-        var height = (int)ProjectContext.Area.Height * Tiles.TILE_SIZE;
-        var outputGif = MakeGif(width, height, files, ref progressBar, frameDelay: delay);
+        var outputGif = MakeGif(ProjectContext.ImageWidth, ProjectContext.ImageHeight, files, ref progressBar, frameDelay: delay);
 
         stopwatch.Stop();
         progressBar.Dispose();
@@ -336,18 +341,13 @@ public static class MapSnapProgram
         }
 
         var box = ProjectContext.Area;
-        var offsets = ProjectContext.PixelOffsets;
-        var width = box.Width * Tiles.TILE_SIZE;
-        var height = box.Height * Tiles.TILE_SIZE;
         var files = ProjectContext.GetImageFilePaths();
 
         Console.WriteLine($"Project: {ProjectContext.Name}" +
                           $"\nSave version v{ProjectContext.Version}" +
                           $"\n{box.Area} tiles at zoom level {ProjectContext.Zoom}" +
                           $"\n{string.Concat(box.ToString().Replace("\n", "\n    "))}" +
-                          (ProjectContext.HasPixelPrecision
-                              ? $"\nFinal image size: {width - offsets.left - offsets.right}x{height - offsets.top - offsets.bottom}px exact, {width}x{height}px uncropped."
-                              : $"\nFinal image size: {width}x{height}px.") +
+                          $"\nFinal image size: {ProjectContext.ImageWidth}x{ProjectContext.ImageHeight}px{(ProjectContext.UsePixelPrecision ? " (pixel-perfect)" : "")}." +
                           $"\nImages are saved as {ProjectContext.OutputFileType.ToString().ToUpper()}s, using a {(ProjectContext.OutputFilenamePolicy == MapsnapProject.FilenamePolicy.Date ? "dated" : "indexed")} naming scheme." +
                           $"\nProject folder contains {(files.Count == 0 ? "no" : files.Count)} valid image{(files.Count == 1 ? "" : "s")}."
         );
@@ -400,6 +400,19 @@ public static class MapSnapProgram
         }
 
         return newImage;
+    }
+
+    private static Image<Rgba32> MakeImage(int tileCountX, int tileCountY, Image<Rgba32>[] tiles, PixelOffsets offsets)
+    {
+        var img = MakeImage(tileCountX, tileCountY, tiles);
+
+        img.Mutate(i =>
+            i.Crop(new Rectangle(
+                offsets.left, offsets.top,
+                img.Width - offsets.left - offsets.right,
+                img.Height - offsets.top - offsets.bottom)));
+
+        return img;
     }
 
     private static Image<Rgba32> MakeGif(int width, int height, IEnumerable<string> sourceFilePaths, ref ProgressBar progressBar,

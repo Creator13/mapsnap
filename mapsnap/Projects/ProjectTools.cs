@@ -11,58 +11,61 @@ namespace mapsnap.Projects;
 
 public static class ProjectTools
 {
-    // Version history:
-    // 1: Added "name", "area: {origin: {item1, item2}, width, height}", "zoom", "output_filename_policy", "output_file_type"
-    // {
-    //     "name": "tajo-es",
-    //     "area": {
-    //         "origin": {
-    //             "item1": 8033,
-    //             "item2": 6197
-    //         },
-    //         "width": 6,
-    //         "height": 5
-    //     },
-    //     "zoom": 14,
-    //     "output_filename_policy": "date",
-    //     "output_file_type": "png"
-    // }
-    // 2: Added "version"
-    // {
-    //     "version": 1,
-    //     "name": "tajo-es",
-    //     "area": {
-    //         "origin": {
-    //             "item1": 8033,
-    //             "item2": 6197
-    //         },
-    //         "width": 6,
-    //         "height": 5
-    //     },
-    //     "zoom": 14,
-    //     "output_filename_policy": "date",
-    //     "output_file_type": "png"
-    // }
-    // 3: Save coordinates instead of area
-    // {
-    //     "version": 1,
-    //     "name": "tajo-es",
-    //     "coordinates":[
-    //         {
-    //             "lon": 6.234,
-    //             "lat": 7.324
-    //         },
-    //         {
-    //             "lon": 6.234,
-    //             "lat": 7.324
-    //         }
-    //     ],
-    //     "zoom": 14,
-    //     "output_filename_policy": "date",
-    //     "output_file_type": "png"
-    // }
+    /* Version history:
+    1: Added "name", "area: {origin: {item1, item2}, width, height}", "zoom", "output_filename_policy", "output_file_type"
+    {
+        "name": "tajo-es",
+        "area": {
+            "origin": {
+                "item1": 8033,
+                "item2": 6197
+            },
+            "width": 6,
+            "height": 5
+        },
+        "zoom": 14,
+        "output_filename_policy": "date",
+        "output_file_type": "png"
+    }
+    2: Added "version"
+    {
+        "version": 1,
+        "name": "tajo-es",
+        "area": {
+            "origin": {
+                "item1": 8033,
+                "item2": 6197
+            },
+            "width": 6,
+            "height": 5
+        },
+        "zoom": 14,
+        "output_filename_policy": "date",
+        "output_file_type": "png"
+    }
+    3: Save coordinates instead of area, include pixel precision
+    {
+        "version": 3,
+        "name": "bathurst",
+        "zoom": 16,
+        "output_file_type": "png",
+        "output_filename_policy": "date",
+        "coordinates": [
+            {
+                "latitude": 47.6989,
+                "longitude": -65.7012
+            },
+            {
+                "latitude": 47.6972,
+                "longitude": -65.6909
+            }
+        ],
+        "pixel_precision": true
+    }
+    */
+
     public const int CURRENT_SAVE_VERSION = 3;
-    
+
     public enum ProjectExistenceMatch
     {
         /**
@@ -99,6 +102,7 @@ public static class ProjectTools
     public const string PROJECT_FILE_NAME = "mapsnap.json";
 
     private static readonly JsonNamingPolicy namingPolicy = new SnakeCaseNamingPolicy();
+
     private static readonly JsonSerializerOptions serializerOptions = new() {
         PropertyNamingPolicy = new SnakeCaseNamingPolicy(),
         Converters = { new JsonStringEnumConverter(new SnakeCaseNamingPolicy()) },
@@ -157,7 +161,7 @@ public static class ProjectTools
         {
             Directory.CreateDirectory(project.Name);
         }
-        
+
         return SaveProject(project, path);
     }
 
@@ -170,7 +174,8 @@ public static class ProjectTools
                 [namingPolicy.ConvertName(nameof(MapsnapProject.Name))] = project.Name,
                 [namingPolicy.ConvertName(nameof(MapsnapProject.Zoom))] = project.Zoom,
                 [namingPolicy.ConvertName(nameof(MapsnapProject.OutputFileType))] = namingPolicy.ConvertName(project.OutputFileType.ToString()),
-                [namingPolicy.ConvertName(nameof(MapsnapProject.OutputFilenamePolicy))] = namingPolicy.ConvertName(project.OutputFilenamePolicy.ToString()),
+                [namingPolicy.ConvertName(nameof(MapsnapProject.OutputFilenamePolicy))] =
+                    namingPolicy.ConvertName(project.OutputFilenamePolicy.ToString()),
             };
 
             if (project.Version <= 2)
@@ -182,14 +187,15 @@ public static class ProjectTools
             else // Version >= 3
             {
                 var coordArray = new JsonArray();
-                foreach (var coords in new[] {project.coordsA, project.coordsB})
+                foreach (var coords in new[] { project.coordsA, project.coordsB })
                 {
                     coordArray.Add(JsonSerializer.SerializeToNode(coords, serializerOptions));
                 }
 
                 projectJsonObj[namingPolicy.ConvertName("Coordinates")] = coordArray;
+                projectJsonObj[namingPolicy.ConvertName("PixelPrecision")] = project.UsePixelPrecision;
             }
-            
+
             using var fs = File.Create(path);
             JsonSerializer.Serialize(fs, projectJsonObj, serializerOptions);
 
@@ -225,9 +231,11 @@ public static class ProjectTools
 
             var name = root.GetProperty("name").GetString();
             var zoom = root.GetProperty("zoom").GetInt32();
-            var fileType = Enum.Parse<MapsnapProject.FileType>(root.GetProperty("output_file_type").GetString()!, serializerOptions.PropertyNameCaseInsensitive);
-            var filenamePolicy = Enum.Parse<MapsnapProject.FilenamePolicy>(root.GetProperty("output_filename_policy").GetString()!, serializerOptions.PropertyNameCaseInsensitive);
-            
+            var fileType = Enum.Parse<MapsnapProject.FileType>(root.GetProperty("output_file_type").GetString()!,
+                serializerOptions.PropertyNameCaseInsensitive);
+            var filenamePolicy = Enum.Parse<MapsnapProject.FilenamePolicy>(root.GetProperty("output_filename_policy").GetString()!,
+                serializerOptions.PropertyNameCaseInsensitive);
+
             if (version <= 2)
             {
                 var area = root.GetProperty("area").Deserialize<BoundingBox>(serializerOptions);
@@ -238,7 +246,7 @@ public static class ProjectTools
                     OutputFileType = fileType,
                     OutputFilenamePolicy = filenamePolicy,
                     Area = area,
-                    PixelOffsets = new PixelOffsets(0, 0, 0, 0),
+                    UsePixelPrecision = false,
                 };
             }
             else // version >= 3 
@@ -249,13 +257,16 @@ public static class ProjectTools
                 coords.MoveNext();
                 var coordsB = coords.Current.Deserialize<Coordinates>(serializerOptions);
 
+                var pixelPrecision = root.GetProperty("pixel_precision").GetBoolean();
+
                 project = new MapsnapProject(coordsA, coordsB, zoom) {
                     Name = name,
                     OutputFileType = fileType,
                     OutputFilenamePolicy = filenamePolicy,
+                    UsePixelPrecision = pixelPrecision
                 };
             }
-            
+
             return true;
         }
         catch (Exception e)

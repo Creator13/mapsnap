@@ -2,11 +2,8 @@
 
 namespace mapsnap.Projects;
 
-[Serializable]
 public record PixelOffsets
 {
-    public static PixelOffsets Zero => new(0, 0, 0, 0);
-
     public int top, right, bottom, left;
 
     /**

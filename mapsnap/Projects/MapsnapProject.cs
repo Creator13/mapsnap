@@ -14,15 +14,44 @@ public record MapsnapProject
 
     internal readonly Coordinates coordsA;
     internal readonly Coordinates coordsB;
-    
+
     internal int Version { get; init; } = ProjectTools.CURRENT_SAVE_VERSION;
     public string Name { get; init; } = "";
     public BoundingBox Area { get; init; }
     public int Zoom { get; init; }
     public FilenamePolicy OutputFilenamePolicy { get; init; } = FilenamePolicy.Date;
     public FileType OutputFileType { get; init; } = FileType.Png;
+    public bool UsePixelPrecision { get; init; }
+
     public PixelOffsets PixelOffsets { get; init; }
-    public bool HasPixelPrecision => !PixelOffsets.Equals(PixelOffsets.Zero);
+
+    public int ImageWidth
+    {
+        get
+        {
+            var width = (int) Area.Width * Tiles.TILE_SIZE;
+            if (UsePixelPrecision)
+            {
+                width -= PixelOffsets.left + PixelOffsets.right;
+            }
+
+            return width;
+        }
+    }
+    
+    public int ImageHeight
+    {
+        get
+        {
+            var height = (int) Area.Height * Tiles.TILE_SIZE;
+            if (UsePixelPrecision)
+            {
+                height -= PixelOffsets.top + PixelOffsets.bottom;
+            }
+
+            return height;
+        }
+    }
 
     internal MapsnapProject() { }
 
@@ -30,11 +59,11 @@ public record MapsnapProject
     {
         coordsA = coordA;
         coordsB = coordB;
-        
+
         (uint x, uint y) a = (Tiles.LongToTileX(coordsA.longitude, zoom), Tiles.LatToTileY(coordsA.latitude, zoom));
         (uint x, uint y) b = (Tiles.LongToTileX(coordsB.longitude, zoom), Tiles.LatToTileY(coordsB.latitude, zoom));
 
-        PixelOffsets = new PixelOffsets(coordsA, coordsB, zoom);
+        PixelOffsets = new PixelOffsets(coordsA, coordsB, Zoom);
         
         Area = new BoundingBox(a, b);
         Zoom = zoom;
