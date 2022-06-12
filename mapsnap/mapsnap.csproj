@@ -5,8 +5,7 @@
         <TargetFramework>net6.0</TargetFramework>
         <AssemblyName>mapsnap</AssemblyName>
         <RootNamespace>mapsnap</RootNamespace>
-        <AssemblyVersion>2.0.0</AssemblyVersion>
-        <InformationalVersion>2.0.0</InformationalVersion>
+        <VersionPrefix>2.0.0</VersionPrefix>
         <NeutralLanguage>en-US</NeutralLanguage>
         <LangVersion>10</LangVersion>
         <PublishSingleFile>true</PublishSingleFile>
