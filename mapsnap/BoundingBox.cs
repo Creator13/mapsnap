@@ -1,7 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
 
-namespace OsmTimelapse;
+namespace mapsnap;
 
 [Serializable]
 public readonly struct BoundingBox
@@ -11,9 +12,9 @@ public readonly struct BoundingBox
     public uint Height { get; init; }
 
     public (uint x, uint y) TopLeft => Origin;
-    public (uint x, uint y) TopRight => (Origin.x + Width, Origin.y);
-    public (uint x, uint y) BottomLeft => (Origin.x, Origin.y + Height);
-    public (uint x, uint y) BottomRight => (Origin.x + Width, Origin.y + Height);
+    public (uint x, uint y) TopRight => (Origin.x + Width - 1, Origin.y);
+    public (uint x, uint y) BottomLeft => (Origin.x, Origin.y + Height - 1);
+    public (uint x, uint y) BottomRight => (Origin.x + Width - 1, Origin.y + Height - 1);
 
     public int Area => (int)Height * (int)Width;
 
@@ -25,10 +26,20 @@ public readonly struct BoundingBox
         var maxY = Math.Max(a.y, b.y);
 
         Origin = (minX, minY);
-        // Adding 1 to the dimensions ensures the right and bottom edge tiles are also included.
-        // The max x/y values are inclusive because the bottom-right coordinate falls in that tile.
+
         Width = maxX - minX + 1;
         Height = maxY - minY + 1;
+    }
+
+    public IEnumerable<(uint, uint)> EnumerateTiles()
+    {
+        for (var y = Origin.y; y <= BottomRight.y; y++)
+        {
+            for (var x = Origin.x; x <= BottomRight.x; x++)
+            {
+                yield return (x, y);
+            }
+        }
     }
 
     public override bool Equals(object obj)

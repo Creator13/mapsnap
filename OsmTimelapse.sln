@@ -1,6 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OsmTimelapse", "OsmTimelapse\OsmTimelapse.csproj", "{3A8D484C-2375-40FD-8DB9-DE21615F6EF7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mapsnap", "mapsnap\mapsnap.csproj", "{3A8D484C-2375-40FD-8DB9-DE21615F6EF7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mapsnap-tests", "mapsnap-tests\mapsnap-tests.csproj", "{D20112F1-F80D-437D-9043-0AF5B49EA4A3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -12,5 +14,9 @@ Global
 		{3A8D484C-2375-40FD-8DB9-DE21615F6EF7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3A8D484C-2375-40FD-8DB9-DE21615F6EF7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3A8D484C-2375-40FD-8DB9-DE21615F6EF7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D20112F1-F80D-437D-9043-0AF5B49EA4A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D20112F1-F80D-437D-9043-0AF5B49EA4A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D20112F1-F80D-437D-9043-0AF5B49EA4A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D20112F1-F80D-437D-9043-0AF5B49EA4A3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
