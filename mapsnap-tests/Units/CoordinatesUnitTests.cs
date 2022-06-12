@@ -1,56 +1,55 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using mapsnap;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace mapsnapTests.UnitTests;
 
-public class CoordinateTestStringGenerator : IEnumerable<object[]>
-{
-    private readonly IEnumerable<string> separators;
-    private readonly IEnumerable<(string, string)> coordinatePairs;
-
-    public CoordinateTestStringGenerator(IEnumerable<string> separators, IEnumerable<(string, string)> coordinatePairs)
-    {
-        this.separators = separators;
-        this.coordinatePairs = coordinatePairs;
-    }
-
-    public IEnumerator<object[]> GetEnumerator() => (
-        from separator in separators
-        from coords in coordinatePairs
-        select new object[] { $"{coords.Item1}{separator}{coords.Item2}" }
-    ).GetEnumerator();
-
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-}
-
 public class CoordinatesUnitTests
 {
+    private readonly ITestOutputHelper testOutputHelper;
+
+    public CoordinatesUnitTests(ITestOutputHelper testOutputHelper)
+    {
+        this.testOutputHelper = testOutputHelper;
+    }
+
     // TODO write tests that test exhaustively for any valid/invalid coordinate
-    public static CoordinateTestStringGenerator ValidCoordinates => new(new[] {
-            " ", "      ",
-            ",", ";", "/",
-            " ,", " ;", " /",
-            ", ", "; ", "/ ",
-            " , ", " ; ", " / ",
-        },
-        new[] {
-            ("+90.0", "-127.554334"),
-            ("45", "180"),
-            ("-90", "-180"),
-            ("-90.000", "-180.0000"),
-            ("67", "25.1234"),
-            ("57.432°", "25.1°"),
-            ("57.432°", "25.1"),
-            ("47.1231231", "179.99999999"),
-            (" 7.343", "17.343"),
-            ("7.343", "17.343 "),
-            (" 7.343", "17.343 "),
-            ("0", "0")
-        });
+    public static IEnumerator<object[]> ValidCoordinates
+    {
+        get
+        {
+            var separators = new[] {
+                " ", "      ",
+                ",", ";", "/",
+                " ,", " ;", " /",
+                ", ", "; ", "/ ",
+                " , ", " ; ", " / ",
+            };
+            var coordinatePairs = new[] {
+                ("+90.0", "-127.554334"),
+                ("45", "180"),
+                ("-90", "-180"),
+                ("-90.000", "-180.0000"),
+                ("67", "25.1234"),
+                ("57.432°", "25.1°"),
+                ("57.432°", "25.1"),
+                ("47.1231231", "179.99999999"),
+                (" 7.343", "17.343"),
+                ("7.343", "17.343 "),
+                (" 7.343", "17.343 "),
+                ("0", "0")
+            };
+
+            return (
+                from separator in separators
+                from coords in coordinatePairs
+                select new object[] { $"{coords.Item1}{separator}{coords.Item2}" }
+            ).GetEnumerator();
+        }
+    }
 
     [Theory]
     [MemberData(nameof(ValidCoordinates))]
@@ -161,5 +160,45 @@ public class CoordinatesUnitTests
     {
         var coords = new Coordinates(lat, lon);
         Assert.Equal(coords.ToString(), expected);
+    }
+
+    [Theory]
+    [InlineData("47.85919, 6.80901", 18, 43, 15)]
+    [InlineData("0, 0", 1, 0, 0)]
+    [InlineData("-0.5, 0.5", 1, 0, 0)]
+    [InlineData("-0.71, 0.71", 1, 1, 1)]
+    [InlineData("0, 0", 0, 128, 128)]
+    [InlineData("0.0001, -0.0001", 1, 255, 255)]
+    // FIXME Maybe this should be in a tile tests class? It doesn't exist atm.
+    // FIXME Add more test data.
+    public void CoordinatesToTilePixel(string coordStr, int zoom, int pixelX, int pixelY)
+    {
+        var coords = new Coordinates(coordStr);
+        testOutputHelper.WriteLine(TileServer.defaultTileServer.GetTileUrl(coords, zoom));
+        Assert.Equal((CartesianCoordinates)(pixelX, pixelY), Tiles.CoordinatesToTilePixel(coords, zoom));
+    }
+
+    [Fact]
+    // FIXME Maybe this should be in a tile tests class? It doesn't exist atm.
+    public void TestPixelWidth()
+    {
+        const int pixelCount = 256;
+        const int sampleCount = 1000;
+
+        var counts = new int[pixelCount];
+        for (var i = 0; i < 180; i++)
+        {
+            for (var j = 0; j < sampleCount; j++)
+            {
+                var lon = i + j / (double)sampleCount;
+                var coords = new Coordinates(0.0, lon);
+                var (x, _) = Tiles.CoordinatesToTilePixel(coords, 1);
+                counts[x]++;
+            }
+        }
+
+        const double expectedSamplesPerPixel = 180 * sampleCount / (double)pixelCount;
+        Assert.All(counts, count =>
+            Assert.InRange(count, (int)Math.Floor(expectedSamplesPerPixel), (int)Math.Ceiling(expectedSamplesPerPixel)));
     }
 }

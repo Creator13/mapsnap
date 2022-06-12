@@ -2,37 +2,74 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace mapsnap.Projects;
 
-[Serializable]
-public record ProjectContext
+public record MapsnapProject
 {
     public enum FilenamePolicy { Index, Date }
 
     public enum FileType { Png, Jpg }
 
-    internal int Version { get; init; } = ProjectSaveData.CURRENT_VERSION;
+    internal readonly Coordinates coordsA;
+    internal readonly Coordinates coordsB;
+
+    internal int Version { get; init; } = ProjectTools.CURRENT_SAVE_VERSION;
     public string Name { get; init; } = "";
     public BoundingBox Area { get; init; }
     public int Zoom { get; init; }
     public FilenamePolicy OutputFilenamePolicy { get; init; } = FilenamePolicy.Date;
     public FileType OutputFileType { get; init; } = FileType.Png;
+    public bool UsePixelPrecision { get; init; }
 
-    internal ProjectContext() { }
+    public PixelOffsets PixelOffsets { get; init; }
 
-    public ProjectContext(Coordinates coordA, Coordinates coordB, int zoom)
+    public int ImageWidth
     {
-        (uint x, uint y) a = (Tiles.LongToTileX(coordA.longitude, zoom), Tiles.LatToTileY(coordA.latitude, zoom));
-        (uint x, uint y) b = (Tiles.LongToTileX(coordB.longitude, zoom), Tiles.LatToTileY(coordB.latitude, zoom));
+        get
+        {
+            var width = (int) Area.Width * Tiles.TILE_SIZE;
+            if (UsePixelPrecision)
+            {
+                width -= PixelOffsets.left + PixelOffsets.right;
+            }
 
+            return width;
+        }
+    }
+    
+    public int ImageHeight
+    {
+        get
+        {
+            var height = (int) Area.Height * Tiles.TILE_SIZE;
+            if (UsePixelPrecision)
+            {
+                height -= PixelOffsets.top + PixelOffsets.bottom;
+            }
+
+            return height;
+        }
+    }
+
+    internal MapsnapProject() { }
+
+    public MapsnapProject(Coordinates coordA, Coordinates coordB, int zoom)
+    {
+        coordsA = coordA;
+        coordsB = coordB;
+
+        (uint x, uint y) a = (Tiles.LongToTileX(coordsA.longitude, zoom), Tiles.LatToTileY(coordsA.latitude, zoom));
+        (uint x, uint y) b = (Tiles.LongToTileX(coordsB.longitude, zoom), Tiles.LatToTileY(coordsB.latitude, zoom));
+
+        PixelOffsets = new PixelOffsets(coordsA, coordsB, Zoom);
+        
         Area = new BoundingBox(a, b);
         Zoom = zoom;
     }
 
-    public ProjectContext(string coordAStr, string coordBStr, int zoom) : this(new Coordinates(coordAStr), new Coordinates(coordBStr), zoom) { }
+    public MapsnapProject(string coordAStr, string coordBStr, int zoom) : this(new Coordinates(coordAStr), new Coordinates(coordBStr), zoom) { }
 
     public string GetNextImageName()
     {

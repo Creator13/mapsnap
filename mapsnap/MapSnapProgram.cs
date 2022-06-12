@@ -20,7 +20,7 @@ namespace mapsnap;
 public static class MapSnapProgram
 {
     public static ServiceProvider ServiceProvider { get; private set; }
-    private static ProjectContext ProjectContext { get; set; }
+    private static MapsnapProject ProjectContext { get; set; }
     private static TileServer TileServer => TileServer.defaultTileServer;
 
     public static async Task<int> Main(string[] args)
@@ -40,14 +40,18 @@ public static class MapSnapProgram
             new Argument<int>("zoom") {
                 Description = "The zoom level of the image you want to capture."
             },
-            new Option<ProjectContext.FileType>(
+            new Option<MapsnapProject.FileType>(
                 new[] { "--file-type", "-t" },
-                () => ProjectContext.FileType.Png,
+                () => MapsnapProject.FileType.Png,
                 "File type for output files."),
-            new Option<ProjectContext.FilenamePolicy>(
+            new Option<MapsnapProject.FilenamePolicy>(
                 new[] { "--name-format", "-n", "-f" },
-                () => ProjectContext.FilenamePolicy.Date,
-                "How should the output files be named.")
+                () => MapsnapProject.FilenamePolicy.Date,
+                "How should the output files be named."),
+            new Option<bool>(
+                new[] { "--pixel-perfect", "-P" },
+                () => true,
+                "Pixel perfect."),
         };
         initCommand.AddAlias("i");
         initCommand.AddAlias("create");
@@ -97,11 +101,11 @@ public static class MapSnapProgram
     }
 
     private static int InitCommandHandler(string name, string coordA, string coordB, int zoom,
-        ProjectContext.FileType fileType, ProjectContext.FilenamePolicy nameFormat)
+        MapsnapProject.FileType fileType, MapsnapProject.FilenamePolicy nameFormat, bool pixelPerfect)
     {
         // Sanitize name
         name = name.Trim();
-        if (!ProjectContext.IsValidProjectName(name))
+        if (!MapsnapProject.IsValidProjectName(name))
         {
             Console.Error.WriteLine(
                 "Project name may only be a connected string of  upper- and lower case letters, digits, hyphens and underscores");
@@ -135,10 +139,11 @@ public static class MapSnapProgram
             }
         }
 
-        ProjectContext = new ProjectContext(coordA, coordB, zoom) {
+        ProjectContext = new MapsnapProject(coordA, coordB, zoom) {
             Name = name,
             OutputFileType = fileType,
-            OutputFilenamePolicy = nameFormat
+            OutputFilenamePolicy = nameFormat,
+            UsePixelPrecision = pixelPerfect
         };
 
         var box = ProjectContext.Area;
@@ -178,7 +183,7 @@ public static class MapSnapProgram
 
     private static int LoadProjectContext(string project = null)
     {
-        ProjectContext projectCtx;
+        MapsnapProject projectCtx;
         bool result;
 
         // If a project name is provided in the command, try to find it.
@@ -223,7 +228,7 @@ public static class MapSnapProgram
         var services = new ServiceCollection().AddHttpClient();
         services.AddHttpClient<ITileDownloaderHttpClient, TileDownloaderHttpClient>();
         ServiceProvider = services.BuildServiceProvider();
-        
+
         if (ProjectContext == null)
         {
             var result = LoadProjectContext(project);
@@ -244,9 +249,11 @@ public static class MapSnapProgram
         var tiles = await TileDownloaderHttpClient.DownloadTiles(TileServer, box, ProjectContext.Zoom);
 
         Console.WriteLine("Saving image (this may take a while if you're snapping a large area)...");
-        using var image = MakeImage((int)box.Width, (int)box.Height, tiles);
+        using var image = ProjectContext.UsePixelPrecision
+            ? MakeImage((int)box.Width, (int)box.Height, tiles, ProjectContext.PixelOffsets)
+            : MakeImage((int)box.Width, (int)box.Height, tiles);
 
-        // TODO add check if new image is the same as the previous image.
+        // TODO add check if new image is the same as the previous image, and skip if so.
 
         var encoder = new PngEncoder {
             CompressionLevel = PngCompressionLevel.DefaultCompression,
@@ -302,9 +309,7 @@ public static class MapSnapProgram
         stopwatch.Start();
 
         // Create gif in memory
-        var width = (int)ProjectContext.Area.Width * Tiles.TILE_SIZE;
-        var height = (int)ProjectContext.Area.Height * Tiles.TILE_SIZE;
-        var outputGif = MakeGif(width, height, files, ref progressBar, frameDelay: delay);
+        var outputGif = MakeGif(ProjectContext.ImageWidth, ProjectContext.ImageHeight, files, ref progressBar, frameDelay: delay);
 
         stopwatch.Stop();
         progressBar.Dispose();
@@ -342,7 +347,8 @@ public static class MapSnapProgram
                           $"\nSave version v{ProjectContext.Version}" +
                           $"\n{box.Area} tiles at zoom level {ProjectContext.Zoom}" +
                           $"\n{string.Concat(box.ToString().Replace("\n", "\n    "))}" +
-                          $"\nImages are saved as {ProjectContext.OutputFileType.ToString().ToUpper()}s, using a {(ProjectContext.OutputFilenamePolicy == ProjectContext.FilenamePolicy.Date ? "dated" : "indexed")} naming scheme." +
+                          $"\nFinal image size: {ProjectContext.ImageWidth}x{ProjectContext.ImageHeight}px{(ProjectContext.UsePixelPrecision ? " (pixel-perfect)" : "")}." +
+                          $"\nImages are saved as {ProjectContext.OutputFileType.ToString().ToUpper()}s, using a {(ProjectContext.OutputFilenamePolicy == MapsnapProject.FilenamePolicy.Date ? "dated" : "indexed")} naming scheme." +
                           $"\nProject folder contains {(files.Count == 0 ? "no" : files.Count)} valid image{(files.Count == 1 ? "" : "s")}."
         );
 
@@ -360,7 +366,7 @@ public static class MapSnapProgram
         return true;
     }
 
-    private static int ValidateProjectContextBeforeCommand(ProjectContext ctx)
+    private static int ValidateProjectContextBeforeCommand(MapsnapProject ctx)
     {
         if (!TileServer.IsValidZoomLevel(ctx.Zoom))
         {
@@ -394,6 +400,19 @@ public static class MapSnapProgram
         }
 
         return newImage;
+    }
+
+    private static Image<Rgba32> MakeImage(int tileCountX, int tileCountY, Image<Rgba32>[] tiles, PixelOffsets offsets)
+    {
+        var img = MakeImage(tileCountX, tileCountY, tiles);
+
+        img.Mutate(i =>
+            i.Crop(new Rectangle(
+                offsets.left, offsets.top,
+                img.Width - offsets.left - offsets.right,
+                img.Height - offsets.top - offsets.bottom)));
+
+        return img;
     }
 
     private static Image<Rgba32> MakeGif(int width, int height, IEnumerable<string> sourceFilePaths, ref ProgressBar progressBar,

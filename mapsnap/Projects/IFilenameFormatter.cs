@@ -8,13 +8,13 @@ namespace mapsnap.Projects;
 
 internal interface IFilenameFormatter
 {
-    string Format(string basename, ProjectContext.FileType type);
+    string Format(string basename, MapsnapProject.FileType type);
     string Format(string baseName, string extension);
 }
 
 internal class DateFilenameFormatter : IFilenameFormatter
 {
-    public string Format(string baseName, ProjectContext.FileType type)
+    public string Format(string baseName, MapsnapProject.FileType type)
     {
         return Format(baseName, type.FileExtension());
     }
@@ -32,7 +32,7 @@ internal class IndexFilenameFormatter : IFilenameFormatter
     // FIXME It would be nicer if this class was initialized with the current number, although that doesn't allow it to respond dynamically
     // (in the current context of a console application, dynamic isn't needed at all)
     
-    public string Format(string baseName, ProjectContext.FileType type)
+    public string Format(string baseName, MapsnapProject.FileType type)
     {
         return Format(baseName, type.FileExtension());
     }
@@ -60,7 +60,7 @@ internal static class FileTypeExtensions
     /**
      * Returns the file extension for this file type.
      */
-    public static string FileExtension(this ProjectContext.FileType fileType)
+    public static string FileExtension(this MapsnapProject.FileType fileType)
     {
         return fileType.ToString().ToLower();
     }

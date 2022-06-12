@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace mapsnap;
 
+[Serializable]
 public struct Coordinates
 {
     // Regex courtesy of https://stackoverflow.com/a/18690202/2274782 with a few tweaks
