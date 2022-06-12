@@ -9,6 +9,7 @@
         <InformationalVersion>2.0.0</InformationalVersion>
         <NeutralLanguage>en-US</NeutralLanguage>
         <LangVersion>10</LangVersion>
+        <PublishSingleFile>true</PublishSingleFile>
     </PropertyGroup>
 
     <ItemGroup>
