@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace mapsnap;
@@ -34,12 +35,15 @@ public struct Coordinates
 
     public override string ToString()
     {
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
         // \u00b0 = °
         return $"{latitude:0.0####}\u00B0 {longitude:0.0####}\u00B0";
     }
 
     private static double[] ParseCoordinateString(string latLongCoords)
     {
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+
         var result = new double[2];
 
         var match = Regex.Match(latLongCoords.Trim(), DECIMAL_COORDINATE_PATTERN);
