@@ -55,6 +55,7 @@ public record MapsnapProject
     internal MapsnapProject(BoundingBox bbox, int zoom)
     {
         Area = bbox;
+        Zoom = zoom;
         coordsA = new Coordinates(Tiles.TileYToLat(bbox.TopLeft.y, zoom), Tiles.TileXToLong(bbox.TopLeft.x, zoom));
         coordsB = new Coordinates(Tiles.TileYToLat(bbox.BottomRight.y + 1, zoom), Tiles.TileXToLong(bbox.BottomRight.x + 1, zoom));
     }
