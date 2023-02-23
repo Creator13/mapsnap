@@ -226,45 +226,7 @@ public static class ProjectTools
             using var document = JsonDocument.Parse(fileStream);
             var root = document.RootElement;
 
-            // Default version is 1; this version does not yet have the version property.
-            var version = root.TryGetProperty("version", out var versionElement) ? versionElement.GetInt32() : 1;
-
-            var name = root.GetProperty("name").GetString();
-            var zoom = root.GetProperty("zoom").GetInt32();
-            var fileType = Enum.Parse<MapsnapProject.FileType>(root.GetProperty("output_file_type").GetString()!,
-                serializerOptions.PropertyNameCaseInsensitive);
-            var filenamePolicy = Enum.Parse<MapsnapProject.FilenamePolicy>(root.GetProperty("output_filename_policy").GetString()!,
-                serializerOptions.PropertyNameCaseInsensitive);
-
-            if (version <= 2)
-            {
-                var area = root.GetProperty("area").Deserialize<BoundingBox>(serializerOptions);
-                project = new MapsnapProject(area, zoom) {
-                    Version = version,
-                    Name = name,
-                    OutputFileType = fileType,
-                    OutputFilenamePolicy = filenamePolicy,
-                    UsePixelPrecision = false
-                };
-            }
-            else // version >= 3 
-            {
-                var coords = root.GetProperty("coordinates").EnumerateArray();
-                coords.MoveNext();
-                var coordsA = coords.Current.Deserialize<Coordinates>(serializerOptions);
-                coords.MoveNext();
-                var coordsB = coords.Current.Deserialize<Coordinates>(serializerOptions);
-
-                var pixelPrecision = root.GetProperty("pixel_precision").GetBoolean();
-
-                project = new MapsnapProject(coordsA, coordsB, zoom) {
-                    Name = name,
-                    OutputFileType = fileType,
-                    OutputFilenamePolicy = filenamePolicy,
-                    UsePixelPrecision = pixelPrecision
-                };
-            }
-
+            project = ProjectFromJson(root);
             return true;
         }
         catch (Exception e)
@@ -275,6 +237,52 @@ public static class ProjectTools
         }
     }
 
+    public static MapsnapProject ProjectFromJson(JsonElement root)
+    {
+        MapsnapProject project;
+        
+        // Default version is 1; this version does not yet have the version property.
+        var version = root.TryGetProperty("version", out var versionElement) ? versionElement.GetInt32() : 1;
+
+        var name = root.GetProperty("name").GetString();
+        var zoom = root.GetProperty("zoom").GetInt32();
+        var fileType = Enum.Parse<MapsnapProject.FileType>(root.GetProperty("output_file_type").GetString()!,
+            serializerOptions.PropertyNameCaseInsensitive);
+        var filenamePolicy = Enum.Parse<MapsnapProject.FilenamePolicy>(root.GetProperty("output_filename_policy").GetString()!,
+            serializerOptions.PropertyNameCaseInsensitive);
+
+        if (version <= 2)
+        {
+            var area = root.GetProperty("area").Deserialize<BoundingBox>(serializerOptions);
+            project = new MapsnapProject(area, zoom) {
+                Version = version,
+                Name = name,
+                OutputFileType = fileType,
+                OutputFilenamePolicy = filenamePolicy,
+                UsePixelPrecision = false
+            };
+        }
+        else // version >= 3 
+        {
+            var coords = root.GetProperty("coordinates").EnumerateArray();
+            coords.MoveNext();
+            var coordsA = coords.Current.Deserialize<Coordinates>(serializerOptions);
+            coords.MoveNext();
+            var coordsB = coords.Current.Deserialize<Coordinates>(serializerOptions);
+
+            var pixelPrecision = root.GetProperty("pixel_precision").GetBoolean();
+
+            project = new MapsnapProject(coordsA, coordsB, zoom) {
+                Name = name,
+                OutputFileType = fileType,
+                OutputFilenamePolicy = filenamePolicy,
+                UsePixelPrecision = pixelPrecision
+            };
+        }
+
+        return project;
+    }
+    
     public static bool LoadProject(out MapsnapProject project)
     {
         return LoadProject(PROJECT_FILE_NAME, out project);
