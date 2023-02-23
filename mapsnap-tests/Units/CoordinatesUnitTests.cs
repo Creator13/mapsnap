@@ -159,7 +159,7 @@ public class CoordinatesUnitTests
     public void StringConversion(double lat, double lon, string expected)
     {
         var coords = new Coordinates(lat, lon);
-        Assert.Equal(coords.ToString(), expected);
+        Assert.Equal(expected, coords.ToString());
     }
 
     [Theory]

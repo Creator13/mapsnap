@@ -23,6 +23,16 @@ public struct CartesianCoordinates
         return obj is CartesianCoordinates coords && coords.x == x && coords.y == y;
     }
 
+    public bool Equals(CartesianCoordinates other)
+    {
+        return Equals(other as object);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(x, y);
+    }
+
     public void Deconstruct(out int x, out int y)
     {
         x = this.x;
