@@ -41,7 +41,7 @@ To get coordinates from the OpenStreetMap website, right click on the corner poi
 
 If your coordinates contain spaces, be sure to surround them with double quotes.
 
-You can also copy the coordinates from the url. Mind that these are the coordinates of the center of the portion of the map you're viewing, so this method can be a little more tricky. Replace the slash between the coordinates with a comma, a space, or a semicolon.
+You can also copy the coordinates from the url. Mind that these are the coordinates of the center of the portion of the map you're viewing, so this method can be a little more tricky.
 
 #### **Zoom level**
 The zoom level can be found in the url on openstreetmap.com. Navigate to a place and zoom to the level you want, then look at the url:
